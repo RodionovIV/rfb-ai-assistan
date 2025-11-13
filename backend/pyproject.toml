@@ -8,4 +8,8 @@ dependencies = [
     "fastapi>=0.121.1",
     "pydantic-settings>=2.12.0",
     "uvicorn>=0.38.0",
+    "numpy>=1.26.4",
+    "pypdf>=4.0.0",
+    "python-pptx>=0.6.23",
+    "faiss-cpu>=1.8.0",
 ]
