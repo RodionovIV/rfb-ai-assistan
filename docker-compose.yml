@@ -16,8 +16,13 @@ services:
       - API_PORT=8000
       - SERVER_HOST=0.0.0.0
       - SERVER_PORT=8000
+      - DB_DSN=postgresql+asyncpg://ai_assistant:ai_assistant@postgres:5432/ai_assistant
+      - REDIS_URL=redis://redis:6379/0
     volumes:
       - ./backend:/app
+    depends_on:
+      - postgres
+      - redis
 
   frontend:
     build:
@@ -32,3 +37,25 @@ services:
       - /app/node_modules
     depends_on:
       - backend
+
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=ai_assistant
+      - POSTGRES_USER=ai_assistant
+      - POSTGRES_PASSWORD=ai_assistant
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+
+volumes:
+  postgres-data:
+  redis-data:
