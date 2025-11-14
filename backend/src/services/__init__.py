@@ -1,3 +1,9 @@
-"""Service layer for backend business logic."""
+from .ingestion import IngestionResult, SlideContent, TextIngestionService, UnsupportedFileFormatError
 
-__all__ = []
+__all__ = [
+    "IngestionResult",
+    "SlideContent",
+    "TextIngestionService",
+    "UnsupportedFileFormatError",
+]
+

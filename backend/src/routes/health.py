@@ -6,3 +6,4 @@ from src.api.health import Health
 @base_router.get(path=API.HEALTH)
 async def health():
     return Health()
+
