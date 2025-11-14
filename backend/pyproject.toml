@@ -12,4 +12,32 @@ dependencies = [
     "pypdf>=4.0.0",
     "python-pptx>=0.6.23",
     "faiss-cpu>=1.8.0",
+    "sqlalchemy[asyncio]>=2.0.30",
+    "asyncpg>=0.29.0",
+    "alembic>=1.13.1",
+    "redis>=5.0.0",
+    "redisvl>=0.2.3",
 ]
+
+[tool.ai_assistant_back.app]
+host = "0.0.0.0"
+port = 8000
+
+[tool.ai_assistant_back.project]
+name = "AI Assistant"
+description = "AI Assistant backend service"
+
+[tool.ai_assistant_back.database]
+dsn = "postgresql+asyncpg://ai_assistant:ai_assistant@localhost:5432/ai_assistant"
+echo = false
+
+[tool.ai_assistant_back.redis]
+url = "redis://localhost:6379/0"
+decode_responses = false
+
+[tool.ai_assistant_back.vector_index]
+name = "context-chunks-index"
+prefix = "chunk"
+dimension = 1536
+distance_metric = "cosine"
+algorithm = "HNSW"
