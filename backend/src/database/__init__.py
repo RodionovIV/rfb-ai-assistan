@@ -150,9 +150,11 @@ _VECTOR_INDEX_DISTANCE = config.vector_index.distance_metric or "cosine"
 _VECTOR_INDEX_ALGORITHM = config.vector_index.algorithm or "HNSW"
 VECTOR_INDEX_SCHEMA = IndexSchema.from_dict(
     {
-        "name": _VECTOR_INDEX_NAME,
-        "prefix": _VECTOR_INDEX_PREFIX,
-        "storage_type": "hash",
+        "index": {
+            "name": _VECTOR_INDEX_NAME,
+            "prefix": [_VECTOR_INDEX_PREFIX],
+            "storage_type": "hash",
+        },
         "fields": [
             {"name": "chunk_id", "type": "tag"},
             {"name": "project_id", "type": "tag"},
