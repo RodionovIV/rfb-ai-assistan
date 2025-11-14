@@ -76,12 +76,16 @@ class GeneralConfig(ps.BaseSettings):
     def settings_customise_sources(
         cls,
         settings_cls: type[ps.BaseSettings],
+        init_settings: ps.PydanticBaseSettingsSource,
+        env_settings: ps.PydanticBaseSettingsSource,
+        dotenv_settings: ps.PydanticBaseSettingsSource,
+        file_secret_settings: ps.PydanticBaseSettingsSource,
         **kwargs: Any,
     ) -> tuple[ps.PydanticBaseSettingsSource, ...]:
         return (
-            ps.InitSettingsSource(settings_cls),
-            ps.EnvSettingsSource(settings_cls),
-            ps.DotEnvSettingsSource(settings_cls),
+            init_settings,
+            env_settings,
+            dotenv_settings,
             ToolTomlSettingsSource(settings_cls, "pyproject.toml"),
         )
 
