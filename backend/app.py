@@ -6,7 +6,7 @@ from src.settings.general import config
 
 app = FastAPI(
     title=config.project.name,
-    description=config.project.description
+    description=config.project.description,
 )
 
 app.include_router(router)
@@ -18,5 +18,5 @@ if __name__ == "__main__":
         host=config.app.host,
         port=config.app.port,
         reload=True,
-        workers=1
+        workers=1,
     )
