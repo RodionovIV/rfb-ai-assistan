@@ -120,7 +120,9 @@ class Message(Base, TimestampMixin):
         SQLEnum(MessageRole, name="message_role"), nullable=False
     )
     content: Mapped[str] = mapped_column(Text, nullable=False)
-    metadata: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    metadata_: Mapped[dict[str, Any] | None] = mapped_column(
+        "metadata", JSONB, nullable=True
+    )
 
     project: Mapped[Project] = relationship("Project", back_populates="messages")
 
