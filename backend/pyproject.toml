@@ -17,6 +17,7 @@ dependencies = [
     "alembic>=1.13.1",
     "redis>=5.0.0",
     "redisvl>=0.2.3",
+    "python-multipart"
 ]
 
 [tool.ai_assistant_back.app]
