@@ -1,4 +1,13 @@
-export default function ReportViewer({ report, status = "idle", updatedAt, error }) {
+export default function ReportViewer({
+  report,
+  status = "idle",
+  updatedAt,
+  error,
+  title = "Отчёт",
+  hideHeader = false,
+  bare = false,
+  className = "",
+}) {
   const formatDate = (value) => {
     if (!value) return null;
     try {
@@ -68,14 +77,20 @@ export default function ReportViewer({ report, status = "idle", updatedAt, error
     );
   };
 
+  const containerClasses = bare
+    ? `text-slate-100 flex flex-col gap-4 ${className}`
+    : `bg-slate-900/60 border border-white/5 rounded-2xl p-5 shadow-xl text-slate-100 flex flex-col gap-4 ${className}`;
+
   return (
-    <section className="bg-slate-900/60 border border-white/5 rounded-2xl p-5 shadow-xl text-slate-100 flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold">Отчёт</h2>
-        {formatDate(updatedAt) ? (
-          <span className="text-xs text-slate-300">Обновлено: {formatDate(updatedAt)}</span>
-        ) : null}
-      </div>
+    <section className={containerClasses}>
+      {!hideHeader ? (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold">{title}</h2>
+          {formatDate(updatedAt) ? (
+            <span className="text-xs text-slate-300">Обновлено: {formatDate(updatedAt)}</span>
+          ) : null}
+        </div>
+      ) : null}
       <div className="flex-1 min-h-[240px] overflow-y-auto pr-1 space-y-4">
         {renderBody()}
       </div>

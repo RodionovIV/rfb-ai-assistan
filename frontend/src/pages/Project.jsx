@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import apiClient from "../services/apiClient.js";
 import SidebarProjectsList from "../components/SidebarProjectsList";
 import ProjectHeader from "../components/ProjectHeader";
-import FileUploadPanel from "../components/FileUploadPanel";
 import ReportViewer from "../components/ReportViewer";
 import ProjectChat from "../components/ProjectChat";
 import { API_PREFIX } from "../config/api";
@@ -63,6 +62,11 @@ export default function Project() {
   const [chatLoading, setChatLoading] = useState(false);
   const [chatError, setChatError] = useState(null);
   const [contextSummary, setContextSummary] = useState(null);
+  const [documentActionMessage, setDocumentActionMessage] = useState(null);
+  const [documentActionError, setDocumentActionError] = useState(null);
+  const [savingProject, setSavingProject] = useState(false);
+  const [deletingProject, setDeletingProject] = useState(false);
+  const fileInputRef = useRef(null);
 
   const statusLabel = useMemo(() => {
     if (project?.status) return project.status;
@@ -89,11 +93,15 @@ export default function Project() {
       setProject(normalized);
 
       if (!options.preserveStatus) {
-        if (normalized.status) {
-          setReportStatus(normalized.status);
-        } else if (reportStatus === "loading") {
-          setReportStatus("idle");
-        }
+        setReportStatus((prevStatus) => {
+          if (normalized.status) {
+            return normalized.status;
+          }
+          if (prevStatus === "loading") {
+            return "idle";
+          }
+          return prevStatus;
+        });
       }
 
       const reportPayload = options.report ?? extractReport(payload);
@@ -127,7 +135,7 @@ export default function Project() {
         setContextSummary(contextPayload ?? null);
       }
     },
-    [projectId, reportStatus]
+    [projectId]
   );
 
   const loadProjectsList = useCallback(async () => {
@@ -145,28 +153,6 @@ export default function Project() {
       setSidebarLoading(false);
     }
   }, []);
-
-  const loadProjectDetails = useCallback(
-    async (id, { skipStatusUpdate = false } = {}) => {
-      if (!skipStatusUpdate) {
-        setReportStatus("loading");
-      }
-      setReportError(null);
-      setChatError(null);
-      try {
-        const response = await apiClient.get(`${API_PREFIX}/projects/${id}`);
-        applyProjectData(response.data);
-        updateChatFromPayload(response.data);
-      } catch (err) {
-        console.error("Failed to load project", err);
-        const message = err?.response?.data?.message ?? "Не удалось загрузить проект";
-        setReportStatus("error");
-        setReportError(message);
-        setChatError("Не удалось загрузить историю чата");
-      }
-    },
-    [applyProjectData, updateChatFromPayload]
-  );
 
   const updateChatFromPayload = useCallback((payload) => {
     if (!payload) {
@@ -202,6 +188,28 @@ export default function Project() {
       setReportUpdatedAt(updatedAtPayload);
     }
   }, []);
+
+  const loadProjectDetails = useCallback(
+    async (id, { skipStatusUpdate = false } = {}) => {
+      if (!skipStatusUpdate) {
+        setReportStatus("loading");
+      }
+      setReportError(null);
+      setChatError(null);
+      try {
+        const response = await apiClient.get(`${API_PREFIX}/projects/${id}`);
+        applyProjectData(response.data);
+        updateChatFromPayload(response.data);
+      } catch (err) {
+        console.error("Failed to load project", err);
+        const message = err?.response?.data?.message ?? "Не удалось загрузить проект";
+        setReportStatus("error");
+        setReportError(message);
+        setChatError("Не удалось загрузить историю чата");
+      }
+    },
+    [applyProjectData, updateChatFromPayload]
+  );
 
   const processProject = useCallback(
     async (id) => {
@@ -287,6 +295,68 @@ export default function Project() {
     [projectId, applyProjectData, updateChatFromPayload]
   );
 
+  const handleDocumentUploadChange = useCallback(
+    async (event) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      setDocumentActionMessage(null);
+      setDocumentActionError(null);
+      try {
+        await handleUpload(file);
+        setDocumentActionMessage("Документ загружен");
+      } catch (err) {
+        setDocumentActionError(err?.message ?? "Не удалось загрузить документ");
+      } finally {
+        event.target.value = "";
+      }
+    },
+    [handleUpload]
+  );
+
+  const handleSaveProject = useCallback(async () => {
+    if (!projectId) return;
+    setSavingProject(true);
+    setDocumentActionMessage(null);
+    setDocumentActionError(null);
+    try {
+      await processProject(projectId);
+      await loadProjectDetails(projectId, { skipStatusUpdate: true });
+      setDocumentActionMessage("Проект сохранён");
+    } catch (err) {
+      const message =
+        err?.response?.data?.message ?? err?.message ?? "Не удалось сохранить проект";
+      setDocumentActionError(message);
+    } finally {
+      setSavingProject(false);
+    }
+  }, [loadProjectDetails, processProject, projectId]);
+
+  const handleDeleteProject = useCallback(async () => {
+    if (!projectId) return;
+    if (typeof window !== "undefined") {
+      const confirmed = window.confirm(
+        "Удалить проект? Это действие нельзя отменить."
+      );
+      if (!confirmed) {
+        return;
+      }
+    }
+    setDeletingProject(true);
+    setDocumentActionMessage(null);
+    setDocumentActionError(null);
+    try {
+      await apiClient.delete(`${API_PREFIX}/projects/${projectId}`);
+      setProjects((prev) => prev.filter((item) => item.id !== projectId));
+      await loadProjectsList();
+      navigate("/", { replace: true });
+    } catch (err) {
+      const message = err?.response?.data?.message ?? err?.message ?? "Не удалось удалить проект";
+      setDocumentActionError(message);
+    } finally {
+      setDeletingProject(false);
+    }
+  }, [loadProjectsList, navigate, projectId]);
+
   useEffect(() => {
     loadProjectsList();
   }, [loadProjectsList]);
@@ -295,6 +365,11 @@ export default function Project() {
     if (!projectId) return;
     loadProjectDetails(projectId);
   }, [projectId, loadProjectDetails]);
+
+  useEffect(() => {
+    setDocumentActionMessage(null);
+    setDocumentActionError(null);
+  }, [projectId]);
 
   const meta = useMemo(() => {
     const chips = [];
@@ -310,18 +385,32 @@ export default function Project() {
     return chips;
   }, [projectId, reportUpdatedAt]);
 
+  const documentUpdatedAtLabel = useMemo(() => {
+    if (!reportUpdatedAt) return null;
+    try {
+      const date = new Date(reportUpdatedAt);
+      if (Number.isNaN(date.getTime?.())) {
+        return null;
+      }
+      return date.toLocaleString();
+    } catch (err) {
+      console.warn("Unable to format updated date", reportUpdatedAt, err);
+      return null;
+    }
+  }, [reportUpdatedAt]);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white">
       <div className="max-w-7xl mx-auto px-6 py-10 space-y-8">
         <ProjectHeader
           title={project?.title ?? `Проект ${projectId}`}
-          subtitle={project?.description ?? "Загрузите документ, чтобы агент подготовил отчёт и контекст для чата."}
+          subtitle={project?.description ?? "Загрузите документ, чтобы агент подготовит отчёт и контекст для чата."}
           status={statusLabel}
           onBack={() => navigate("/")}
           meta={meta}
         />
 
-        <div className="grid gap-8 lg:grid-cols-[320px_minmax(0,1fr)]">
+        <div className="grid gap-8 lg:grid-cols-[320px_minmax(0,1fr)_minmax(0,0.9fr)]">
           <SidebarProjectsList
             projects={projects}
             activeProjectId={projectId}
@@ -331,29 +420,99 @@ export default function Project() {
             emptyMessage={sidebarLoading ? "Загрузка..." : "Пока нет проектов"}
           />
 
-          <div className="space-y-6">
-            <div className="grid gap-6 xl:grid-cols-2">
-              <FileUploadPanel
-                onUpload={handleUpload}
-                status={reportStatus}
-                statusMessage={reportError ?? "Загрузите PDF-документ для анализа"}
-              />
+          <ProjectChat
+            messages={chatMessages}
+            onSend={handleSendMessage}
+            isSending={chatLoading}
+            contextSummary={contextSummary}
+            error={chatError}
+          />
+
+          <section className="bg-slate-900/60 border border-white/5 rounded-2xl p-5 shadow-xl text-slate-100 flex flex-col gap-4">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-semibold">Документ проекта</h2>
+                <p className="text-sm text-slate-300">
+                  Управляйте загрузкой файла, сохранением отчёта и удалением проекта.
+                </p>
+              </div>
+              {documentUpdatedAtLabel ? (
+                <span className="text-xs text-slate-300">
+                  Обновлено: {documentUpdatedAtLabel}
+                </span>
+              ) : null}
+            </div>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="application/pdf"
+              className="hidden"
+              onChange={handleDocumentUploadChange}
+            />
+
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={reportStatus === "uploading" || reportStatus === "analyzing"}
+                className={`px-4 py-2.5 rounded-xl font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 ${
+                  reportStatus === "uploading" || reportStatus === "analyzing"
+                    ? "bg-slate-800 text-slate-400 cursor-not-allowed"
+                    : "bg-indigo-500 hover:bg-indigo-400 text-white focus:ring-indigo-300"
+                }`}
+              >
+                {reportStatus === "uploading" ? "Загружаем..." : "Загрузить"}
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveProject}
+                disabled={savingProject}
+                className={`px-4 py-2.5 rounded-xl font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 ${
+                  savingProject
+                    ? "bg-emerald-800 text-emerald-200 cursor-not-allowed"
+                    : "bg-emerald-500 hover:bg-emerald-400 text-slate-900 focus:ring-emerald-200"
+                }`}
+              >
+                {savingProject ? "Сохраняем..." : "Сохранить проект"}
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteProject}
+                disabled={deletingProject}
+                className={`px-4 py-2.5 rounded-xl font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 ${
+                  deletingProject
+                    ? "bg-red-900/60 text-red-200 cursor-not-allowed"
+                    : "bg-red-600 hover:bg-red-500 text-white focus:ring-red-300"
+                }`}
+              >
+                {deletingProject ? "Удаляем..." : "Удалить"}
+              </button>
+            </div>
+
+            {documentActionError ? (
+              <div className="text-sm text-red-300 bg-red-900/30 border border-red-700/40 rounded-xl px-3 py-2">
+                {documentActionError}
+              </div>
+            ) : null}
+
+            {documentActionMessage ? (
+              <div className="text-sm text-emerald-200 bg-emerald-900/20 border border-emerald-700/40 rounded-xl px-3 py-2">
+                {documentActionMessage}
+              </div>
+            ) : null}
+
+            <div className="pt-3 border-t border-white/5">
               <ReportViewer
                 report={report}
                 status={reportStatus}
                 updatedAt={reportUpdatedAt}
                 error={reportError}
+                hideHeader
+                bare
               />
             </div>
-
-            <ProjectChat
-              messages={chatMessages}
-              onSend={handleSendMessage}
-              isSending={chatLoading}
-              contextSummary={contextSummary}
-              error={chatError}
-            />
-          </div>
+          </section>
         </div>
       </div>
     </div>

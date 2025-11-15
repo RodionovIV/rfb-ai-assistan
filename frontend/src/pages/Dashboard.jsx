@@ -7,6 +7,15 @@ import { API_PREFIX } from "../config/api";
 
 const normalizeProjects = (rawProjects) => {
   if (!rawProjects) return [];
+  if (
+    rawProjects.id ||
+    rawProjects.project_id ||
+    rawProjects.uuid ||
+    rawProjects.slug ||
+    rawProjects.name
+  ) {
+    return [rawProjects];
+  }
   const list = Array.isArray(rawProjects)
     ? rawProjects
     : rawProjects.projects ?? Object.values(rawProjects ?? {});
@@ -25,6 +34,7 @@ export default function Dashboard() {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [creatingProject, setCreatingProject] = useState(false);
 
   const loadProjects = useCallback(async () => {
     setLoading(true);
@@ -45,6 +55,33 @@ export default function Dashboard() {
   useEffect(() => {
     loadProjects();
   }, [loadProjects]);
+
+  const handleCreateProject = useCallback(async () => {
+    setCreatingProject(true);
+    setError(null);
+    try {
+      const now = new Date();
+      const payload = {
+        name: `Новый проект ${now.toLocaleDateString("ru-RU")} ${now.toLocaleTimeString("ru-RU")}`,
+      };
+      const response = await apiClient.post(`${API_PREFIX}/projects/create`, payload);
+      const normalized = normalizeProjects(response.data)?.[0];
+      if (normalized) {
+        setProjects((prev) => [normalized, ...prev]);
+        navigate(`/projects/${normalized.id}`);
+      } else if (response.data?.id) {
+        navigate(`/projects/${response.data.id}`);
+      }
+    } catch (err) {
+      console.error("Failed to create project", err);
+      setError(
+        err?.response?.data?.message ??
+          "Не удалось создать проект. Попробуйте повторить попытку позже."
+      );
+    } finally {
+      setCreatingProject(false);
+    }
+  }, [navigate]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white">
@@ -75,10 +112,15 @@ export default function Dashboard() {
               </p>
               <button
                 type="button"
-                onClick={loadProjects}
-                className="inline-flex items-center gap-2 self-start px-5 py-2.5 rounded-xl bg-indigo-500 hover:bg-indigo-400 text-white font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:ring-offset-2 focus:ring-offset-slate-900"
+                onClick={handleCreateProject}
+                disabled={creatingProject}
+                className={`inline-flex items-center gap-2 self-start px-5 py-2.5 rounded-xl font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:ring-offset-2 focus:ring-offset-slate-900 ${
+                  creatingProject
+                    ? "bg-indigo-800 text-slate-300 cursor-not-allowed"
+                    : "bg-indigo-500 hover:bg-indigo-400 text-white"
+                }`}
               >
-                Обновить список
+                {creatingProject ? "Создаём..." : "Добавить проект"}
               </button>
             </div>
           </section>
