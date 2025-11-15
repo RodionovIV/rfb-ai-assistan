@@ -93,11 +93,15 @@ export default function Project() {
       setProject(normalized);
 
       if (!options.preserveStatus) {
-        if (normalized.status) {
-          setReportStatus(normalized.status);
-        } else if (reportStatus === "loading") {
-          setReportStatus("idle");
-        }
+        setReportStatus((prevStatus) => {
+          if (normalized.status) {
+            return normalized.status;
+          }
+          if (prevStatus === "loading") {
+            return "idle";
+          }
+          return prevStatus;
+        });
       }
 
       const reportPayload = options.report ?? extractReport(payload);
@@ -131,7 +135,7 @@ export default function Project() {
         setContextSummary(contextPayload ?? null);
       }
     },
-    [projectId, reportStatus]
+    [projectId]
   );
 
   const loadProjectsList = useCallback(async () => {
