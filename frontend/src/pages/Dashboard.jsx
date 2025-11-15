@@ -3,8 +3,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import SidebarProjectsList from "../components/SidebarProjectsList";
 import ProjectHeader from "../components/ProjectHeader";
-
-const API_PREFIX = "/api/v1";
+import { API_PREFIX } from "../config/api";
 
 const normalizeProjects = (rawProjects) => {
   if (!rawProjects) return [];

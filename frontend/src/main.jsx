@@ -1,5 +1,17 @@
 import axios from "axios";
-axios.defaults.baseURL = "http://localhost:8080";
+import { API_BASE_URL } from "./config/api";
+
+const resolveBaseUrl = () => {
+  if (API_BASE_URL) {
+    return API_BASE_URL;
+  }
+  if (typeof window !== "undefined" && window.location) {
+    return `${window.location.protocol}//${window.location.host}`;
+  }
+  return "";
+};
+
+axios.defaults.baseURL = resolveBaseUrl();
 
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'

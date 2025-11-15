@@ -6,8 +6,7 @@ import ProjectHeader from "../components/ProjectHeader";
 import FileUploadPanel from "../components/FileUploadPanel";
 import ReportViewer from "../components/ReportViewer";
 import ProjectChat from "../components/ProjectChat";
-
-const API_PREFIX = "/api/v1";
+import { API_PREFIX } from "../config/api";
 
 const extractReport = (payload) => {
   if (!payload) return null;
