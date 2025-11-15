@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import inspect
 import json
+import logging
 import math
 import uuid
 from typing import Any, Iterable
@@ -24,6 +25,9 @@ def _cosine_similarity(left: list[float], right: list[float]) -> float:
     return numerator / (left_norm * right_norm)
 
 
+logger = logging.getLogger(__name__)
+
+
 class VectorIndexRepository:
     def __init__(self, redis_client: Redis, index: SearchIndex) -> None:
         self._redis = redis_client
@@ -38,14 +42,7 @@ class VectorIndexRepository:
         return f"{self._prefix}:{chunk_id}"
 
     async def ensure_index(self, overwrite: bool = False) -> None:
-        exists = False
-        exists_method = getattr(self._index, "exists", None)
-        if callable(exists_method):
-            maybe_exists = exists_method()
-            if inspect.isawaitable(maybe_exists):
-                exists = await maybe_exists  # type: ignore[assignment]
-            else:
-                exists = bool(maybe_exists)
+        exists = await self._index_exists()
         if exists and not overwrite:
             return
         try:
@@ -53,11 +50,69 @@ class VectorIndexRepository:
             if inspect.isawaitable(result):
                 await result  # type: ignore[misc]
         except ResponseError as exc:  # pragma: no cover - depends on Redis configuration
+            message = str(exc).lower()
+            if "unknown command" in message:
+                logger.warning(
+                    "RediSearch commands unavailable, skipping index creation: %s",
+                    exc,
+                )
+                return
             if overwrite:
                 raise
-            message = str(exc).lower()
             if "exists" not in message:
                 raise
+
+    async def _index_exists(self) -> bool:
+        """Check if the configured index already exists.
+
+        redisvl's ``SearchIndex.exists`` implementation performs synchronous
+        calls against the Redis client. When using ``redis.asyncio`` this leads
+        to ``TypeError: argument of type 'coroutine' is not iterable`` because
+        the underlying ``listall`` coroutine is not awaited. To make the check
+        robust we try to call ``exists`` first, but fall back to invoking
+        ``listall`` directly and awaiting it when necessary.
+        """
+
+        exists_method = getattr(self._index, "exists", None)
+        if callable(exists_method):
+            try:
+                maybe_exists = exists_method()
+            except TypeError as exc:
+                # Triggered when ``exists`` calls ``listall`` synchronously while
+                # the Redis client is asynchronous. In that case we retry using
+                # ``listall`` directly.
+                if "coroutine" not in str(exc):
+                    raise
+            except ResponseError as exc:
+                # redisvl<=0.2.3 uses ``FT._LIST`` internally, which is not
+                # supported by redis-stack 7.4. If the command is unknown we
+                # fall back to manual listing.
+                if "unknown command" not in str(exc).lower():
+                    raise
+            else:
+                if inspect.isawaitable(maybe_exists):
+                    return bool(await maybe_exists)  # type: ignore[return-value]
+                return bool(maybe_exists)
+
+        indexes = await self._list_indexes()
+        return self._index.schema.index.name in indexes
+
+    async def _list_indexes(self) -> list[str]:
+        """Return all RediSearch indexes, regardless of client support level."""
+
+        commands = ("FT._LIST", "FT.LIST")
+        for command in commands:
+            try:
+                result = await self._redis.execute_command(command)
+            except ResponseError as exc:  # pragma: no cover - depends on Redis
+                if "unknown command" in str(exc).lower():
+                    continue
+                raise
+            if not result:
+                return []
+            decoded = [name.decode("utf-8") if isinstance(name, bytes) else name for name in result]
+            return decoded
+        return []
 
     async def upsert_chunk(
         self,
