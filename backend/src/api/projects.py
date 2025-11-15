@@ -70,4 +70,73 @@ class ProjectChatResponse(BaseModel):
     history: List[ProjectMessage]
 
 
+# Models for agent outputs
+
+
+class MarketInsight(BaseModel):
+    """Market insight from market mapper agent."""
+
+    topic: str
+    summary: str
+    sources: List[str] = Field(default_factory=list)
+
+
+class MarketMapperOutput(BaseModel):
+    """Output from market mapper agent."""
+
+    insights: List[MarketInsight] = Field(default_factory=list)
+
+
+class SlideModel(BaseModel):
+    """Model representing a slide from a pitch deck."""
+
+    index: int
+    text: str
+
+
+class PitchParserSection(BaseModel):
+    """Section identified in a pitch deck."""
+
+    name: str
+    slides: List[int] = Field(default_factory=list)
+    summary: str = ""
+
+
+class PitchParserOutput(BaseModel):
+    """Output from pitch parser agent."""
+
+    slides: List[SlideModel] = Field(default_factory=list)
+    sections: List[PitchParserSection] = Field(default_factory=list)
+
+
+class WebFinding(BaseModel):
+    """Web finding from web scout agent."""
+
+    title: str
+    url: str
+    snippet: str
+
+
+class WebScoutOutput(BaseModel):
+    """Output from web scout agent."""
+
+    findings: List[WebFinding] = Field(default_factory=list)
+
+
+class ReportRecommendation(BaseModel):
+    """Recommendation in a report."""
+
+    title: str
+    rationale: str
+
+
+class ReportWriterOutput(BaseModel):
+    """Output from report writer agent."""
+
+    title: str
+    executive_summary: str
+    recommendations: List[ReportRecommendation] = Field(default_factory=list)
+    appendix: dict = Field(default_factory=dict)
+
+
 ProjectResponse.model_rebuild()
