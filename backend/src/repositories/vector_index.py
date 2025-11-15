@@ -73,21 +73,36 @@ class VectorIndexRepository:
                 # ``listall`` directly.
                 if "coroutine" not in str(exc):
                     raise
+            except ResponseError as exc:
+                # redisvl<=0.2.3 uses ``FT._LIST`` internally, which is not
+                # supported by redis-stack 7.4. If the command is unknown we
+                # fall back to manual listing.
+                if "unknown command" not in str(exc).lower():
+                    raise
             else:
                 if inspect.isawaitable(maybe_exists):
                     return bool(await maybe_exists)  # type: ignore[return-value]
                 return bool(maybe_exists)
 
-        listall_method = getattr(self._index, "listall", None)
-        if callable(listall_method):
-            result = listall_method()
-            if inspect.isawaitable(result):
-                indexes = await result  # type: ignore[assignment]
-            else:
-                indexes = result
-            return self._index.schema.index.name in indexes
+        indexes = await self._list_indexes()
+        return self._index.schema.index.name in indexes
 
-        return False
+    async def _list_indexes(self) -> list[str]:
+        """Return all RediSearch indexes, regardless of client support level."""
+
+        commands = ("FT._LIST", "FT.LIST")
+        for command in commands:
+            try:
+                result = await self._redis.execute_command(command)
+            except ResponseError as exc:  # pragma: no cover - depends on Redis
+                if "unknown command" in str(exc).lower():
+                    continue
+                raise
+            if not result:
+                return []
+            decoded = [name.decode("utf-8") if isinstance(name, bytes) else name for name in result]
+            return decoded
+        return []
 
     async def upsert_chunk(
         self,
