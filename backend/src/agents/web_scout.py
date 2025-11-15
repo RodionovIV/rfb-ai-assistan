@@ -29,10 +29,7 @@ class WebScoutAgent(Agent):
                     model_name=model_name,
                     api_key=api_key or os.getenv("OPENAI_API_KEY"),
                     system_prompt=(
-                        "You are an expert web researcher and information analyst. "
-                        "Based on search queries, generate informative findings with titles, "
-                        "relevant URLs, and concise snippets that summarize key information. "
-                        "Be accurate and provide actionable insights."
+                        "Вы опытный веб-исследователь и информационный аналитик. На основе поисковых запросов генерируйте информативные результаты с заголовками, релевантными URL-адресами и краткими фрагментами, в которых обобщается ключевая информация. Будьте точны и предоставляйте полезную информацию."
                     ),
                 )
             except ValueError:
@@ -59,13 +56,13 @@ class WebScoutAgent(Agent):
     def _generate_finding_with_llm(self, query: str, timestamp: str) -> WebFinding:
         """Генерирует finding используя LLM."""
         prompt = (
-            f"Generate a web research finding for the query: '{query}'. "
-            "Provide:\n"
-            "1. A descriptive title (max 100 characters)\n"
-            "2. A relevant URL format (use example.com domain)\n"
-            "3. A concise snippet (2-3 sentences) with key information about this topic\n\n"
-            "Format your response as:\n"
-            "Title: [title]\n"
+            f"Сгенерируй результаты веб-исследования для данного запроса: '{query}'. "
+            "Обеспечь:\n"
+            "1. Описательный заголовок (максимум 100 символов)\n"
+            "2. Соответствующий формат URL (используйте example.com домен)\n"
+            "3. Краткий фрагмент (2-3 предложения) с ключевой информацией по данной теме\n\n"
+            "Отформатируйте свой ответ следующим образом:\n"
+            "Заголовок: [title]\n"
             "URL: [url]\n"
             "Snippet: [snippet]"
         )

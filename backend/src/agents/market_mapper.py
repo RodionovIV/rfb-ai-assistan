@@ -35,9 +35,7 @@ class MarketMapperAgent(Agent):
                     model_name=model_name,
                     api_key=api_key or os.getenv("OPENAI_API_KEY"),
                     system_prompt=(
-                        "You are an expert market analyst. Analyze the provided documents "
-                        "and create a concise, insightful summary about the market topic. "
-                        "Focus on key insights, trends, and important information."
+                        "Вы опытный рыночный аналитик. Проанализируйте предоставленные документы и составьте краткое, содержательную суммаризацию по теме рынка. Сосредоточьтесь на ключевых выводах, тенденциях и важной информации."
                     ),
                 )
             except ValueError:
@@ -75,12 +73,12 @@ class MarketMapperAgent(Agent):
         if self.use_llm and self.llm_agent:
             # Формируем контекст из найденных документов
             context_text = "\n\n".join(
-                [f"Document {i+1}:\n{doc.text}" for i, doc in enumerate(documents)]
+                [f"Документ {i+1}:\n{doc.text}" for i, doc in enumerate(documents)]
             )
             
             prompt = (
-                f"Analyze the following documents related to '{query}' and provide "
-                f"a concise summary with key insights:\n\n{context_text}"
+                f"Проанализируйте следующие документы, относящиеся к '{query}' и предоставьте "
+                f"краткую суммаризацию с ключевыми выводами:\n\n{context_text}"
             )
             
             try:
@@ -100,5 +98,5 @@ class MarketMapperAgent(Agent):
         for snippet in snippets:
             if snippet not in unique_snippets:
                 unique_snippets.append(snippet)
-        return f"Insights for '{query}': " + " | ".join(unique_snippets)
+        return f"Идеи для '{query}': " + " | ".join(unique_snippets)
 

@@ -48,8 +48,7 @@ class LangGraphAgent(Agent):
             )
 
         self.system_prompt = system_prompt or (
-            "You are a helpful AI assistant that provides accurate and detailed responses. "
-            "Use the provided context to answer questions when available."
+            "Ты - лучший в мире ИИ помощник по проектам, который дает точные и подробные ответы. Используй предоставленный контекст для ответов на вопросы."
         )
 
         # Инициализация LLM
@@ -92,7 +91,7 @@ class LangGraphAgent(Agent):
         system_content = self.system_prompt
         if context:
             context_str = "\n".join([f"{k}: {v}" for k, v in context.items()])
-            system_content += f"\n\nContext:\n{context_str}"
+            system_content += f"\n\nКонтекст:\n{context_str}"
 
         # Создаем список сообщений с системным промптом
         full_messages = [SystemMessage(content=system_content)] + messages

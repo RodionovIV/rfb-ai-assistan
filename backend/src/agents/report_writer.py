@@ -32,10 +32,7 @@ class ReportWriterAgent(Agent):
                     model_name=model_name,
                     api_key=api_key or os.getenv("OPENAI_API_KEY"),
                     system_prompt=(
-                        "You are an expert business analyst and report writer. "
-                        "Create comprehensive, well-structured executive summaries and recommendations "
-                        "based on pitch deck analysis, market research, and web findings. "
-                        "Be concise, insightful, and actionable."
+                        "Вы являетесь опытным бизнес-аналитиком и составителем отчетов. Создавайте всеобъемлющие, хорошо структурированные суммаризации и рекомендации, основанные на анализе маркетинговых исследований и веб-находок. Будьте краткими, проницательными и практичными."
                     ),
                 )
             except ValueError:
@@ -60,7 +57,7 @@ class ReportWriterAgent(Agent):
             "web_findings": [finding.model_dump() for finding in web.findings],
         }
         output = ReportWriterOutput(
-            title=f"Project {project_id} research report",
+            title=f"Отчет о проекте {project_id}",
             executive_summary=self._compose_summary(pitch=pitch, market=market, web=web),
             recommendations=recommendations,
             appendix=appendix,
@@ -75,23 +72,22 @@ class ReportWriterAgent(Agent):
             # Формируем контекст для LLM
             pitch_info = "\n".join(
                 [f"- {section.name}: {section.summary[:200]}" for section in pitch.sections]
-            ) or "No pitch sections identified"
+            ) or "Питч разделы не найдены"
 
             market_info = "\n".join(
                 [f"- {insight.topic}: {insight.summary[:200]}" for insight in market.insights]
-            ) or "No market insights"
+            ) or "Рыночные идеи не найдены"
 
             web_info = "\n".join(
                 [f"- {finding.title}: {finding.snippet[:200]}" for finding in web.findings]
-            ) or "No web findings"
+            ) or "Информация в интернете не найдена"
 
             prompt = (
-                "Create a comprehensive executive summary (2-3 paragraphs) for a business research report "
-                "based on the following information:\n\n"
-                f"Pitch Deck Sections:\n{pitch_info}\n\n"
-                f"Market Insights:\n{market_info}\n\n"
-                f"Web Findings:\n{web_info}\n\n"
-                "Provide a clear, concise summary that highlights key findings and insights."
+                "Создайте всеобъемлющую суммаризацию (2-3 абзаца) для отчета о бизнес-исследовании на основе следующей информации: \n\n"
+                f"Питч разделы:\n{pitch_info}\n\n"
+                f"Рыночные идеи:\n{market_info}\n\n"
+                f"Находки в интернете:\n{web_info}\n\n"
+                "Предоставьте четкое и сжатое резюме, в котором будут освещены ключевые выводы и инсайты."
             )
 
             try:
@@ -111,9 +107,9 @@ class ReportWriterAgent(Agent):
         market_topics = ", ".join(insight.topic for insight in market.insights) or "No market insights"
         web_sources = ", ".join(finding.title for finding in web.findings) or "No web findings"
         return (
-            "The pitch deck analysis covered the following sections: "
-            f"{pitch_sections}. Market research highlighted {market_topics}. Web scouting captured "
-            f"signals from: {web_sources}."
+            "Анализ питча охватывал следующие разделы: "
+            f"{pitch_sections}. Исследование рынка выделило {market_topics}. Поиск в интернете "
+            f"дал информацию: {web_sources}."
         )
 
     def _build_recommendations(
@@ -130,10 +126,10 @@ class ReportWriterAgent(Agent):
             # Используем LLM для генерации более качественных рекомендаций
             market_topics = ", ".join(insight.topic for insight in market.insights)
             prompt = (
-                f"Based on market research topics: {market_topics}, "
-                "generate 3-5 actionable recommendations for further research or analysis. "
-                "For each recommendation, provide a title and a brief rationale (1-2 sentences). "
-                "Format: Title: [title]\nRationale: [rationale]\n\n"
+                f"Основываясь на темах маркетинговых исследований {market_topics}, "
+                "сформулируйте 3-5 практических рекомендаций для дальнейшего изучения "
+                "или анализа. Для каждой рекомендации укажите название и краткое обоснование (1-2 предложения). "
+                "Формат: Название: [название] \n Обоснование: [обоснование]\n\n"
             )
 
             try:

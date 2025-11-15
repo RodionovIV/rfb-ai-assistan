@@ -37,9 +37,7 @@ class PitchParserAgent(Agent):
                     model_name=model_name,
                     api_key=api_key or os.getenv("OPENAI_API_KEY"),
                     system_prompt=(
-                        "You are an expert at analyzing pitch decks and presentations. "
-                        "Classify slides into appropriate sections and create concise summaries. "
-                        "Identify key information about problems, solutions, market, business model, traction, and team."
+                        "Вы являетесь экспертом в анализе презентаций. Классифицируйте слайды по соответствующим разделам и создавайте краткие суммаризации. Определите ключевую информацию о проблемах, решениях, рынке, бизнес-модели, привлекательности и команде."
                     ),
                 )
             except ValueError:
@@ -96,8 +94,8 @@ class PitchParserAgent(Agent):
 
         available_sections = ", ".join(self.section_hints.keys())
         prompt = (
-            f"Analyze this pitch deck slide and classify it into one of these sections: {available_sections}. "
-            f"Return only the section name, nothing else.\n\nSlide text:\n{slide.text}"
+            f"Проанализируйте этот слайд и отнесите его к одному из следующих разделов: {available_sections}. "
+            f"Укажите только название раздела, ничего больше.\n\nТекст слайда:\n{slide.text}"
         )
 
         try:
@@ -120,8 +118,8 @@ class PitchParserAgent(Agent):
 
         combined_text = "\n\n".join([f"Slide {i+1}:\n{text}" for i, text in enumerate(texts)])
         prompt = (
-            f"Create a concise summary (max 500 characters) for the '{section}' section "
-            f"based on these slides:\n\n{combined_text}"
+            f"Сделай короткую суммаризацию (максимум 500 символов) для '{section}' раздела "
+            f"основываясь на этих слайдах:\n\n{combined_text}"
         )
 
         try:
