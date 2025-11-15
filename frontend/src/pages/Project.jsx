@@ -150,28 +150,6 @@ export default function Project() {
     }
   }, []);
 
-  const loadProjectDetails = useCallback(
-    async (id, { skipStatusUpdate = false } = {}) => {
-      if (!skipStatusUpdate) {
-        setReportStatus("loading");
-      }
-      setReportError(null);
-      setChatError(null);
-      try {
-        const response = await apiClient.get(`${API_PREFIX}/projects/${id}`);
-        applyProjectData(response.data);
-        updateChatFromPayload(response.data);
-      } catch (err) {
-        console.error("Failed to load project", err);
-        const message = err?.response?.data?.message ?? "Не удалось загрузить проект";
-        setReportStatus("error");
-        setReportError(message);
-        setChatError("Не удалось загрузить историю чата");
-      }
-    },
-    [applyProjectData, updateChatFromPayload]
-  );
-
   const updateChatFromPayload = useCallback((payload) => {
     if (!payload) {
       setChatMessages([]);
@@ -206,6 +184,28 @@ export default function Project() {
       setReportUpdatedAt(updatedAtPayload);
     }
   }, []);
+
+  const loadProjectDetails = useCallback(
+    async (id, { skipStatusUpdate = false } = {}) => {
+      if (!skipStatusUpdate) {
+        setReportStatus("loading");
+      }
+      setReportError(null);
+      setChatError(null);
+      try {
+        const response = await apiClient.get(`${API_PREFIX}/projects/${id}`);
+        applyProjectData(response.data);
+        updateChatFromPayload(response.data);
+      } catch (err) {
+        console.error("Failed to load project", err);
+        const message = err?.response?.data?.message ?? "Не удалось загрузить проект";
+        setReportStatus("error");
+        setReportError(message);
+        setChatError("Не удалось загрузить историю чата");
+      }
+    },
+    [applyProjectData, updateChatFromPayload]
+  );
 
   const processProject = useCallback(
     async (id) => {
