@@ -1,18 +1,11 @@
-FROM python:3.10-slim
+FROM python:3.13-slim
 
 WORKDIR /app
 
+COPY . /app
+
 # Установка uv
-RUN pip install uv
-
-# Копируем файлы зависимостей
-COPY pyproject.toml ./
-
-# Сначала создаем lockfile, потом синхронизируем
-RUN uv lock && uv sync --frozen
-
-# Копируем исходный код
-COPY . .
+RUN pip install uv && uv sync
 
 # Создаем .env с минимальными настройками
 RUN echo "APP_HOST=0.0.0.0" > .env && echo "APP_PORT=8000" >> .env
