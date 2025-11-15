@@ -34,7 +34,7 @@ class MessageRepository(BaseRepository):
             project_id=project_id,
             role=role,
             content=content,
-            metadata=metadata,
+            metadata_=metadata,
         )
         self.session.add(message)
         await self.session.flush()

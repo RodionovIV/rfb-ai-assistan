@@ -120,7 +120,9 @@ class Message(Base, TimestampMixin):
         SQLEnum(MessageRole, name="message_role"), nullable=False
     )
     content: Mapped[str] = mapped_column(Text, nullable=False)
-    metadata: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    metadata_: Mapped[dict[str, Any] | None] = mapped_column(
+        "metadata", JSONB, nullable=True
+    )
 
     project: Mapped[Project] = relationship("Project", back_populates="messages")
 
@@ -141,11 +143,18 @@ redis_client = redis_async.from_url(
 )
 
 
+_VECTOR_INDEX_NAME = config.vector_index.name or "context-chunks-index"
+_VECTOR_INDEX_PREFIX = config.vector_index.prefix or "chunk"
+_VECTOR_INDEX_DIMENSION = config.vector_index.dimension or 1536
+_VECTOR_INDEX_DISTANCE = config.vector_index.distance_metric or "cosine"
+_VECTOR_INDEX_ALGORITHM = config.vector_index.algorithm or "HNSW"
 VECTOR_INDEX_SCHEMA = IndexSchema.from_dict(
     {
-        "name": config.vector_index.name,
-        "prefix": config.vector_index.prefix,
-        "storage_type": "hash",
+        "index": {
+            "name": _VECTOR_INDEX_NAME,
+            "prefix": [_VECTOR_INDEX_PREFIX],
+            "storage_type": "hash",
+        },
         "fields": [
             {"name": "chunk_id", "type": "tag"},
             {"name": "project_id", "type": "tag"},
@@ -155,9 +164,9 @@ VECTOR_INDEX_SCHEMA = IndexSchema.from_dict(
                 "name": "embedding",
                 "type": "vector",
                 "attrs": {
-                    "dims": config.vector_index.dimension,
-                    "distance_metric": config.vector_index.distance_metric,
-                    "algorithm": config.vector_index.algorithm,
+                    "dims": _VECTOR_INDEX_DIMENSION,
+                    "distance_metric": _VECTOR_INDEX_DISTANCE,
+                    "algorithm": _VECTOR_INDEX_ALGORITHM,
                 },
             },
         ],

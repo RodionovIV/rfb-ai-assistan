@@ -43,7 +43,7 @@ async def create_project(
     request: ProjectCreateRequest,
     service: ProjectsService = Depends(get_projects_service),
 ) -> ProjectResponse:
-    project = service.create_project(name=request.name, description=request.description)
+    project = await service.create_project(name=request.name, description=request.description)
     return _to_response(project)
 
 
@@ -54,7 +54,7 @@ async def upload_project_file(
     service: ProjectsService = Depends(get_projects_service),
 ) -> ProjectFileUploadResponse:
     try:
-        project, stored_path = service.upload_file(project_id=project_id, file=file)
+        project, stored_path = await service.upload_file(project_id=project_id, file=file)
     except ProjectNotFoundError as exc:  # pragma: no cover - FastAPI handles raising
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found") from exc
 
@@ -71,7 +71,7 @@ async def process_project(
     service: ProjectsService = Depends(get_projects_service),
 ) -> ProjectProcessResponse:
     try:
-        project, summary = service.process_project(project_id=project_id)
+        project, summary = await service.process_project(project_id=project_id)
     except ProjectNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found") from exc
 
@@ -80,7 +80,7 @@ async def process_project(
 
 @router.get("", response_model=ProjectListResponse)
 async def list_projects(service: ProjectsService = Depends(get_projects_service)) -> ProjectListResponse:
-    projects = service.list_projects()
+    projects = await service.list_projects()
     return ProjectListResponse(projects=[_to_response(project) for project in projects])
 
 
@@ -90,7 +90,7 @@ async def get_project(
     service: ProjectsService = Depends(get_projects_service),
 ) -> ProjectResponse:
     try:
-        project = service.get_project(project_id=project_id)
+        project = await service.get_project(project_id=project_id)
     except ProjectNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found") from exc
 
@@ -103,7 +103,7 @@ async def delete_project(
     service: ProjectsService = Depends(get_projects_service),
 ) -> ProjectResponse:
     try:
-        project = service.delete_project(project_id=project_id)
+        project = await service.delete_project(project_id=project_id)
     except ProjectNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found") from exc
 
@@ -117,7 +117,7 @@ async def project_chat(
     service: ProjectsService = Depends(get_projects_service),
 ) -> ProjectChatResponse:
     try:
-        project, reply, history = service.add_message(project_id=project_id, message=request.message)
+        project, reply, history = await service.add_message(project_id=project_id, message=request.message)
     except ProjectNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found") from exc
 
