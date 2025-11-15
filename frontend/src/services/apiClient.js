@@ -48,14 +48,25 @@ const summarizeData = (data) => {
   return data;
 };
 
+const logSection = (label, ...args) => {
+  if (typeof console?.groupCollapsed === "function") {
+    console.groupCollapsed(label);
+    args.forEach((arg) => console.log(arg));
+    console.groupEnd();
+    return;
+  }
+  console.log(label, ...args);
+};
+
 apiClient.interceptors.request.use((config) => {
   const method = (config.method ?? "GET").toUpperCase();
   const url = formatRequestUrl(config);
   const summary = summarizeData(config.data);
+  const message = `[API][REQUEST] ${method} ${url}`;
   if (summary === undefined) {
-    console.log(`[API][REQUEST] ${method} ${url}`);
+    logSection(message, "Тело запроса отсутствует");
   } else {
-    console.log(`[API][REQUEST] ${method} ${url}`, summary);
+    logSection(message, "Тело запроса:", summary);
   }
   return config;
 });
@@ -64,8 +75,10 @@ apiClient.interceptors.response.use(
   (response) => {
     const method = (response.config?.method ?? "GET").toUpperCase();
     const url = formatRequestUrl(response.config ?? {});
-    console.log(
-      `[API][RESPONSE] ${response.status} ${method} ${url}`,
+    const status = response.status;
+    logSection(
+      `[API][RESPONSE] ${status} ${method} ${url}`,
+      "Ответ сервера:",
       summarizeData(response.data)
     );
     return response;
@@ -76,12 +89,13 @@ apiClient.interceptors.response.use(
     const url = formatRequestUrl(config);
 
     if (error.response) {
-      console.error(
+      logSection(
         `[API][ERROR] ${error.response.status} ${method} ${url}`,
+        "Ответ сервера:",
         summarizeData(error.response.data)
       );
     } else {
-      console.error(`[API][ERROR] ${method} ${url}`, error.message ?? error);
+      logSection(`[API][ERROR] ${method} ${url}`, error.message ?? error);
     }
 
     return Promise.reject(error);
