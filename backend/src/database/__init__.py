@@ -147,9 +147,33 @@ redis_client = redis_async.from_url(
 # Redis client. To keep the rest of the application asynchronous while letting
 # ``SearchIndex`` function correctly, we provide it with a dedicated
 # synchronous Redis connection.
-redis_sync_client = RedisSync.from_url(
-    config.redis.url,
-    decode_responses=config.redis.decode_responses,
+def _patch_sync_redis_for_search_index(client: RedisSync) -> RedisSync:
+    """Ensure redisvl can fall back to ``FT.LIST`` when ``FT._LIST`` is missing."""
+
+    original_execute_command = client.execute_command
+
+    def execute_command_with_compat(*args: Any, **kwargs: Any):  # type: ignore[override]
+        command = args[0] if args else None
+        try:
+            return original_execute_command(*args, **kwargs)
+        except ResponseError as exc:
+            if (
+                isinstance(command, str)
+                and command.upper() == "FT._LIST"
+                and "unknown command" in str(exc).lower()
+            ):
+                return original_execute_command("FT.LIST", *args[1:], **kwargs)
+            raise
+
+    client.execute_command = execute_command_with_compat  # type: ignore[assignment]
+    return client
+
+
+redis_sync_client = _patch_sync_redis_for_search_index(
+    RedisSync.from_url(
+        config.redis.url,
+        decode_responses=config.redis.decode_responses,
+    )
 )
 
 
