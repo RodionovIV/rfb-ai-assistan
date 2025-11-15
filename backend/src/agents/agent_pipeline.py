@@ -114,7 +114,12 @@ def run_pitch_parser_agent(raw_slides):
 
 def run_web_scout_agent(queries):
     try:
-        agent = WebScoutAgent(use_llm=True, api_key=api_key)
+        # Используем реальный поиск в интернете (DuckDuckGo)
+        agent = WebScoutAgent(
+            use_llm=True, 
+            api_key=api_key,
+            use_real_search=True,  # Включаем реальный поиск
+        )
         result = agent.run(queries=queries)
 
         print(f"Запросы: {queries}")
@@ -133,8 +138,7 @@ def run_web_scout_agent(queries):
 
 
 def run_report_writer_agent(project_id, pitch_result, market_result, web_result):
-    try:
-            
+    try:            
         pitch = PitchParserOutput(**pitch_result)
         market = MarketMapperOutput(**market_result)
         web = WebScoutOutput(**web_result)
@@ -193,13 +197,32 @@ def main():
 
     print("АНАЛИЗ ПИТЧА:")
     pitch_data = run_pitch_parser_agent(slides)
+    
+    if not pitch_data:
+        print("Ошибка: не удалось проанализировать питч")
+        return 1
 
+    # Формируем запросы для поиска на основе названий секций и ключевых слов
     queries = []
-    for sec_res in pitch_data['sections']:
-        queries.append(sec_res['summary'])
+    for sec_res in pitch_data.get('sections', []):
+        section_name = sec_res.get('name', '')
+        summary = sec_res.get('summary', '')
+        # Используем название секции как основной запрос, summary может быть слишком длинным
+        # if section_name:
+        #     queries.append(section_name)
+        # elif summary:
+        queries.append(summary)
+
+    if not queries:
+        print("Предупреждение: не найдено запросов для поиска")
+        queries = ["technology", "market"]  # Fallback запросы
 
     print("\n\nПОИСК В ИНТЕРНЕТЕ:")
     web_data = run_web_scout_agent(queries)
+    
+    if not web_data:
+        print("Предупреждение: не удалось выполнить поиск в интернете")
+        web_data = {"findings": []}
 
     documents = [
         VectorDocument(
@@ -219,10 +242,16 @@ def main():
     print("\n\nПОИСК ПО БАЗЕ:")
     market_data = run_market_mapper_agent(documents, queries)
     
+    if not market_data:
+        print("Предупреждение: не удалось выполнить поиск по базе")
+        market_data = {"insights": []}
+    
     project_id = "test-project-123"
     print("\n\nФормирование отчета:")
     report = run_report_writer_agent(project_id, pitch_data, market_data, web_data)
+    
     print("\n\nПолный отчет:\n", report)
+    return 0
 
 if __name__ == "__main__":
     exit(main())
