@@ -3,7 +3,6 @@ from __future__ import annotations
 import inspect
 import uuid
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
 from datetime import datetime
 from enum import Enum
 from typing import Any
@@ -131,7 +130,6 @@ engine: AsyncEngine = create_async_engine(config.database.dsn, echo=config.datab
 async_session_factory = async_sessionmaker(engine, expire_on_commit=False)
 
 
-@asynccontextmanager
 async def get_session() -> AsyncIterator[AsyncSession]:
     async with async_session_factory() as session:
         yield session
