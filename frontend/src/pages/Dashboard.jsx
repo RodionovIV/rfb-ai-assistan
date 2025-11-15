@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import SidebarProjectsList from "../components/SidebarProjectsList";
 import ProjectHeader from "../components/ProjectHeader";
+import { API_PREFIX } from "../config/api";
 
 const normalizeProjects = (rawProjects) => {
   if (!rawProjects) return [];
@@ -29,7 +30,7 @@ export default function Dashboard() {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get("/projects");
+      const response = await axios.get(`${API_PREFIX}/projects`);
       const normalized = normalizeProjects(response.data);
       setProjects(normalized);
     } catch (err) {

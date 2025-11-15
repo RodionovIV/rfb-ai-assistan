@@ -6,13 +6,29 @@ import ProjectHeader from "../components/ProjectHeader";
 import FileUploadPanel from "../components/FileUploadPanel";
 import ReportViewer from "../components/ReportViewer";
 import ProjectChat from "../components/ProjectChat";
+import { API_PREFIX } from "../config/api";
+
+const extractReport = (payload) => {
+  if (!payload) return null;
+  return (
+    payload.report ??
+    payload.analysis ??
+    payload.summary_text ??
+    payload.analysis_summary ??
+    null
+  );
+};
 
 const normalizeProject = (project, fallbackId) => ({
   id: project?.id ?? project?.project_id ?? project?.uuid ?? project?.slug ?? fallbackId,
   title: project?.title ?? project?.name ?? project?.display_name ?? `Проект ${fallbackId}`,
   description: project?.description ?? project?.summary ?? "",
-  status: project?.status ?? project?.report_status ?? project?.state ?? null,
-  report: project?.report ?? project?.analysis ?? project?.summary_text ?? null,
+  status:
+    project?.status ??
+    project?.report_status ??
+    project?.state ??
+    (project?.processed ? "ready" : null),
+  report: extractReport(project),
   reportUpdatedAt: project?.updated_at ?? project?.report_updated_at ?? project?.modified_at ?? null,
   context: project?.context_summary ?? project?.context ?? project?.metadata?.context ?? null,
 });
@@ -71,37 +87,54 @@ export default function Project() {
       if (!payload) return;
       const normalized = normalizeProject(payload, projectId);
       setProject(normalized);
-      setReportUpdatedAt(normalized.reportUpdatedAt ?? reportUpdatedAt ?? null);
 
-      const reportPayload = options.report ?? payload.report ?? payload.analysis ?? payload.summary_text;
-      if (reportPayload) {
-        setReport(reportPayload);
-        setReportStatus("ready");
-      } else if (payload.status === "analyzing" || payload.report_status === "analyzing") {
-        setReport(null);
-        setReportStatus("analyzing");
-      } else if (!options.preserveStatus && reportStatus === "loading") {
-        setReportStatus(normalized.status ?? "idle");
+      if (!options.preserveStatus) {
+        if (normalized.status) {
+          setReportStatus(normalized.status);
+        } else if (reportStatus === "loading") {
+          setReportStatus("idle");
+        }
       }
 
-      const updatedAtPayload = options.updatedAt ?? payload.updated_at ?? payload.report_updated_at ?? payload.modified_at;
+      const reportPayload = options.report ?? extractReport(payload);
+      if (reportPayload) {
+        setReport(reportPayload);
+        if (!options.preserveStatus) {
+          setReportStatus("ready");
+        }
+      } else if (!options.preserveStatus) {
+        setReport(null);
+      }
+
+      const updatedAtPayload =
+        options.updatedAt ??
+        normalized.reportUpdatedAt ??
+        payload.updated_at ??
+        payload.report_updated_at ??
+        payload.modified_at ??
+        null;
       if (updatedAtPayload) {
         setReportUpdatedAt(updatedAtPayload);
       }
 
-      const contextPayload = options.context ?? payload.context_summary ?? payload.context ?? payload.metadata?.context;
-      if (contextPayload) {
-        setContextSummary(contextPayload);
+      const contextPayload =
+        options.context ??
+        payload.context_summary ??
+        payload.context ??
+        payload.metadata?.context ??
+        undefined;
+      if (contextPayload !== undefined) {
+        setContextSummary(contextPayload ?? null);
       }
     },
-    [projectId, reportStatus, reportUpdatedAt]
+    [projectId, reportStatus]
   );
 
   const loadProjectsList = useCallback(async () => {
     setSidebarLoading(true);
     setSidebarError(null);
     try {
-      const response = await axios.get("/projects");
+      const response = await axios.get(`${API_PREFIX}/projects`);
       const list = normalizeProjectsList(response.data);
       setProjects(list);
     } catch (err) {
@@ -118,85 +151,80 @@ export default function Project() {
         setReportStatus("loading");
       }
       setReportError(null);
+      setChatError(null);
       try {
-        const response = await axios.get(`/projects/${id}`);
+        const response = await axios.get(`${API_PREFIX}/projects/${id}`);
         applyProjectData(response.data);
+        updateChatFromPayload(response.data);
       } catch (err) {
         console.error("Failed to load project", err);
         const message = err?.response?.data?.message ?? "Не удалось загрузить проект";
         setReportStatus("error");
         setReportError(message);
-      }
-    },
-    [applyProjectData]
-  );
-
-  const updateChatFromPayload = useCallback(
-    (payload) => {
-      if (!payload) return;
-      const history = normalizeHistory(payload);
-      if (history.length) {
-        setChatMessages(history);
-      }
-      if (payload.context_summary ?? payload.context) {
-        setContextSummary(payload.context_summary ?? payload.context);
-      }
-      if (payload.report ?? payload.analysis ?? payload.summary_text) {
-        setReport(payload.report ?? payload.analysis ?? payload.summary_text);
-        setReportStatus("ready");
-      }
-      if (payload.updated_at ?? payload.report_updated_at) {
-        setReportUpdatedAt(payload.updated_at ?? payload.report_updated_at);
-      }
-    },
-    []
-  );
-
-  const loadChatHistory = useCallback(
-    async (id) => {
-      setChatError(null);
-      try {
-        const response = await axios.get(`/projects/${id}/chat`);
-        updateChatFromPayload(response.data);
-      } catch (err) {
-        console.error("Failed to load chat history", err);
         setChatError("Не удалось загрузить историю чата");
       }
     },
-    [updateChatFromPayload]
+    [applyProjectData, updateChatFromPayload]
   );
 
-  const pollReport = useCallback(
-    async (id, attempts = 10, delay = 3000) => {
-      for (let attempt = 0; attempt < attempts; attempt += 1) {
-        try {
-          const response = await axios.get(`/projects/${id}/report`);
-          const payload = response.data ?? {};
-          if (payload.status) {
-            setReportStatus(payload.status);
-          }
-          if (payload.report ?? payload.analysis ?? payload.summary_text) {
-            setReport(payload.report ?? payload.analysis ?? payload.summary_text);
-            setReportStatus("ready");
-            setReportUpdatedAt(payload.updated_at ?? payload.report_updated_at ?? new Date().toISOString());
-            if (payload.context_summary ?? payload.context) {
-              setContextSummary(payload.context_summary ?? payload.context);
-            }
-            return payload;
-          }
-          if ((payload.status ?? payload.report_status) === "ready") {
-            await loadProjectDetails(id, { skipStatusUpdate: true });
-            return payload;
-          }
-        } catch (err) {
-          console.error("Report polling failed", err);
+  const updateChatFromPayload = useCallback((payload) => {
+    if (!payload) {
+      setChatMessages([]);
+      setContextSummary(null);
+      return;
+    }
+
+    const history = normalizeHistory(payload);
+    setChatMessages(history.length ? history : []);
+
+    const contextPayload =
+      payload.context_summary ??
+      payload.context ??
+      payload.project?.context_summary ??
+      payload.project?.context ??
+      null;
+    setContextSummary(contextPayload ?? null);
+
+    const reportPayload = extractReport(payload) ?? extractReport(payload.project);
+    if (reportPayload) {
+      setReport(reportPayload);
+      setReportStatus("ready");
+    }
+
+    const updatedAtPayload =
+      payload.updated_at ??
+      payload.report_updated_at ??
+      payload.project?.updated_at ??
+      payload.project?.report_updated_at ??
+      null;
+    if (updatedAtPayload) {
+      setReportUpdatedAt(updatedAtPayload);
+    }
+  }, []);
+
+  const processProject = useCallback(
+    async (id) => {
+      try {
+        const response = await axios.post(`${API_PREFIX}/projects/${id}/process`);
+        const payload = response.data ?? {};
+        if (payload.status) {
+          setReportStatus(payload.status);
         }
-        // wait before next attempt
-        await new Promise((resolve) => setTimeout(resolve, delay));
+        if (payload.details) {
+          setReport(payload.details);
+          setReportStatus("ready");
+          setReportUpdatedAt(new Date().toISOString());
+        }
+        return payload;
+      } catch (err) {
+        console.error("Project processing failed", err);
+        const message = err?.response?.data?.message ?? "Не удалось обработать проект";
+        setReportStatus("error");
+        setReportError(message);
+        throw err;
       }
-      return null;
     },
-    [loadProjectDetails]
+    []
   );
 
   const handleUpload = useCallback(
@@ -209,13 +237,12 @@ export default function Project() {
       setReportError(null);
 
       try {
-        await axios.post(`/projects/${projectId}/documents`, formData, {
+        await axios.post(`${API_PREFIX}/projects/${projectId}/upload`, formData, {
           headers: { "Content-Type": "multipart/form-data" },
         });
         setReportStatus("analyzing");
-        await pollReport(projectId);
+        await processProject(projectId);
         await loadProjectDetails(projectId, { skipStatusUpdate: true });
-        await loadChatHistory(projectId);
       } catch (err) {
         console.error("File upload failed", err);
         const message = err?.response?.data?.message ?? err?.message ?? "Не удалось загрузить документ";
@@ -224,7 +251,7 @@ export default function Project() {
         throw new Error(message);
       }
     },
-    [projectId, pollReport, loadProjectDetails, loadChatHistory]
+    [projectId, processProject, loadProjectDetails]
   );
 
   const handleSendMessage = useCallback(
@@ -233,8 +260,11 @@ export default function Project() {
       setChatLoading(true);
       setChatError(null);
       try {
-        const response = await axios.post(`/projects/${projectId}/chat`, { message });
+        const response = await axios.post(`${API_PREFIX}/projects/${projectId}/chat`, { message });
         const payload = response.data ?? {};
+        if (payload.project) {
+          applyProjectData(payload.project, { preserveStatus: true });
+        }
         if (!normalizeHistory(payload).length) {
           setChatMessages((prev) => [
             ...prev,
@@ -243,14 +273,6 @@ export default function Project() {
           ]);
         } else {
           updateChatFromPayload(payload);
-        }
-        if (payload.context_summary ?? payload.context) {
-          setContextSummary(payload.context_summary ?? payload.context);
-        }
-        if (payload.report ?? payload.analysis ?? payload.summary_text) {
-          setReport(payload.report ?? payload.analysis ?? payload.summary_text);
-          setReportStatus("ready");
-          setReportUpdatedAt(payload.updated_at ?? payload.report_updated_at ?? new Date().toISOString());
         }
       } catch (err) {
         console.error("Failed to send message", err);
@@ -261,7 +283,7 @@ export default function Project() {
         setChatLoading(false);
       }
     },
-    [projectId, updateChatFromPayload]
+    [projectId, applyProjectData, updateChatFromPayload]
   );
 
   useEffect(() => {
@@ -271,8 +293,7 @@ export default function Project() {
   useEffect(() => {
     if (!projectId) return;
     loadProjectDetails(projectId);
-    loadChatHistory(projectId);
-  }, [projectId, loadProjectDetails, loadChatHistory]);
+  }, [projectId, loadProjectDetails]);
 
   const meta = useMemo(() => {
     const chips = [];
