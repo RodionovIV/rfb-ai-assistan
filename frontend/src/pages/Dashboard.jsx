@@ -4,6 +4,8 @@ import axios from "axios";
 import SidebarProjectsList from "../components/SidebarProjectsList";
 import ProjectHeader from "../components/ProjectHeader";
 
+const API_PREFIX = "/api/v1";
+
 const normalizeProjects = (rawProjects) => {
   if (!rawProjects) return [];
   const list = Array.isArray(rawProjects)
@@ -29,7 +31,7 @@ export default function Dashboard() {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get("/projects");
+      const response = await axios.get(`${API_PREFIX}/projects`);
       const normalized = normalizeProjects(response.data);
       setProjects(normalized);
     } catch (err) {
