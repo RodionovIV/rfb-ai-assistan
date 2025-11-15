@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import Field
 import pydantic_settings as ps
 
 
@@ -13,37 +13,39 @@ class BaseConfig(ps.BaseSettings):
 class AppConfig(BaseConfig):
     model_config = ps.SettingsConfigDict(env_prefix="APP_", env_file=".env")
 
-    host: str = "0.0.0.0"
-    port: int = 8000
+    host: str
+    port: int
 
 
-class ProjectConfig(BaseModel):
-    name: str = "AI Assistant"
-    description: str = "AI Assistant backend service"
+class ProjectConfig(BaseConfig):
+    model_config = ps.SettingsConfigDict(env_prefix="PROJECT_", env_file=".env")
+
+    name: str
+    description: str
 
 
 class DatabaseConfig(BaseConfig):
     model_config = ps.SettingsConfigDict(env_prefix="DB_", env_file=".env")
 
-    dsn: str = "postgresql+asyncpg://ai_assistant:ai_assistant@localhost:5432/ai_assistant"
+    dsn: str
     echo: bool = False
 
 
 class RedisConfig(BaseConfig):
     model_config = ps.SettingsConfigDict(env_prefix="REDIS_", env_file=".env")
 
-    url: str = "redis://localhost:6379/0"
+    url: str
     decode_responses: bool = False
 
 
 class VectorIndexConfig(BaseConfig):
     model_config = ps.SettingsConfigDict(env_prefix="VECTOR_INDEX_", env_file=".env")
 
-    name: str = "context-chunks-index"
-    prefix: str = "chunk"
-    dimension: int = 1536
-    distance_metric: str = "cosine"
-    algorithm: str = "HNSW"
+    name: str
+    prefix: str
+    dimension: int
+    distance_metric: str
+    algorithm: str
 
 
 class ToolTomlSettingsSource(ps.TomlConfigSettingsSource):
@@ -62,6 +64,8 @@ class ToolTomlSettingsSource(ps.TomlConfigSettingsSource):
 
 
 class GeneralConfig(ps.BaseSettings):
+    model_config = ps.SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+
     app: AppConfig = Field(default_factory=AppConfig)
     project: ProjectConfig = Field(default_factory=ProjectConfig)
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
