@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import inspect
 import json
+import logging
 import math
 import uuid
 from typing import Any, Iterable
@@ -22,6 +23,9 @@ def _cosine_similarity(left: list[float], right: list[float]) -> float:
     if left_norm == 0 or right_norm == 0:
         return 0.0
     return numerator / (left_norm * right_norm)
+
+
+logger = logging.getLogger(__name__)
 
 
 class VectorIndexRepository:
@@ -46,9 +50,15 @@ class VectorIndexRepository:
             if inspect.isawaitable(result):
                 await result  # type: ignore[misc]
         except ResponseError as exc:  # pragma: no cover - depends on Redis configuration
+            message = str(exc).lower()
+            if "unknown command" in message:
+                logger.warning(
+                    "RediSearch commands unavailable, skipping index creation: %s",
+                    exc,
+                )
+                return
             if overwrite:
                 raise
-            message = str(exc).lower()
             if "exists" not in message:
                 raise
 
