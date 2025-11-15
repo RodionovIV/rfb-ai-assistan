@@ -327,7 +327,7 @@ export default function Project() {
             isLoading={sidebarLoading}
             error={sidebarError}
             onSelect={(_, id) => navigate(`/projects/${id}`)}
-            emptyMessage={sidebarLoading ? "Загрузка..." : "Проекты ещё не созданы"}
+            emptyMessage={sidebarLoading ? "Загрузка..." : "Пока нет проектов"}
           />
 
           <div className="space-y-6">

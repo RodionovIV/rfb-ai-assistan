@@ -63,7 +63,7 @@ export default function Dashboard() {
             isLoading={loading}
             error={error}
             onSelect={(_, projectId) => navigate(`/projects/${projectId}`)}
-            emptyMessage={loading ? "Загрузка проектов..." : "Создайте первый проект через загрузку документа."}
+            emptyMessage={loading ? "Загрузка проектов..." : "Пока нет проектов"}
           />
 
           <section className="bg-slate-900/60 border border-white/5 rounded-2xl p-6 shadow-xl flex flex-col justify-center text-slate-100">
