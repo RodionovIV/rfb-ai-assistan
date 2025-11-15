@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import apiClient from "../services/apiClient.js";
 import SidebarProjectsList from "../components/SidebarProjectsList";
 import ProjectHeader from "../components/ProjectHeader";
 import { API_PREFIX } from "../config/api";
@@ -30,7 +30,7 @@ export default function Dashboard() {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get(`${API_PREFIX}/projects`);
+      const response = await apiClient.get(`${API_PREFIX}/projects`);
       const normalized = normalizeProjects(response.data);
       setProjects(normalized);
       setError(null);
