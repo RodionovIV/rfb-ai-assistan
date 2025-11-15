@@ -7,39 +7,39 @@ import pydantic_settings as ps
 
 
 class BaseConfig(ps.BaseSettings):
-    model_config = ps.SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = ps.SettingsConfigDict(extra="ignore")
 
 
 class AppConfig(BaseConfig):
-    model_config = ps.SettingsConfigDict(env_prefix="APP_", env_file=".env")
+    model_config = ps.SettingsConfigDict(env_prefix="APP_")
 
     host: str
     port: int
 
 
 class ProjectConfig(BaseConfig):
-    model_config = ps.SettingsConfigDict(env_prefix="PROJECT_", env_file=".env")
+    model_config = ps.SettingsConfigDict(env_prefix="PROJECT_")
 
     name: str
     description: str
 
 
 class DatabaseConfig(BaseConfig):
-    model_config = ps.SettingsConfigDict(env_prefix="DB_", env_file=".env")
+    model_config = ps.SettingsConfigDict(env_prefix="DB_")
 
     dsn: str
     echo: bool = False
 
 
 class RedisConfig(BaseConfig):
-    model_config = ps.SettingsConfigDict(env_prefix="REDIS_", env_file=".env")
+    model_config = ps.SettingsConfigDict(env_prefix="REDIS_")
 
     url: str
     decode_responses: bool = False
 
 
 class VectorIndexConfig(BaseConfig):
-    model_config = ps.SettingsConfigDict(env_prefix="VECTOR_INDEX_", env_file=".env")
+    model_config = ps.SettingsConfigDict(env_prefix="VECTOR_INDEX_")
 
     name: str
     prefix: str
@@ -64,8 +64,6 @@ class ToolTomlSettingsSource(ps.TomlConfigSettingsSource):
 
 
 class GeneralConfig(ps.BaseSettings):
-    model_config = ps.SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
-
     app: AppConfig = Field(default_factory=AppConfig)
     project: ProjectConfig = Field(default_factory=ProjectConfig)
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
