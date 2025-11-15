@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import apiClient from "../services/apiClient.js";
 import SidebarProjectsList from "../components/SidebarProjectsList";
 import ProjectHeader from "../components/ProjectHeader";
 import { API_PREFIX } from "../config/api";
@@ -30,9 +30,10 @@ export default function Dashboard() {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get(`${API_PREFIX}/projects`);
+      const response = await apiClient.get(`${API_PREFIX}/projects`);
       const normalized = normalizeProjects(response.data);
       setProjects(normalized);
+      setError(null);
     } catch (err) {
       console.error("Failed to load projects", err);
       setError("Не удалось загрузить список проектов. Попробуйте обновить страницу позже.");
@@ -63,7 +64,7 @@ export default function Dashboard() {
             isLoading={loading}
             error={error}
             onSelect={(_, projectId) => navigate(`/projects/${projectId}`)}
-            emptyMessage={loading ? "Загрузка проектов..." : "Создайте первый проект через загрузку документа."}
+            emptyMessage={loading ? "Загрузка проектов..." : "Пока нет проектов"}
           />
 
           <section className="bg-slate-900/60 border border-white/5 rounded-2xl p-6 shadow-xl flex flex-col justify-center text-slate-100">

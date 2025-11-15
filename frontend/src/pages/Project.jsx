@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import axios from "axios";
+import apiClient from "../services/apiClient.js";
 import SidebarProjectsList from "../components/SidebarProjectsList";
 import ProjectHeader from "../components/ProjectHeader";
 import FileUploadPanel from "../components/FileUploadPanel";
@@ -134,9 +134,10 @@ export default function Project() {
     setSidebarLoading(true);
     setSidebarError(null);
     try {
-      const response = await axios.get(`${API_PREFIX}/projects`);
+      const response = await apiClient.get(`${API_PREFIX}/projects`);
       const list = normalizeProjectsList(response.data);
       setProjects(list);
+      setSidebarError(null);
     } catch (err) {
       console.error("Failed to load projects list", err);
       setSidebarError("Не удалось загрузить список проектов");
@@ -153,7 +154,7 @@ export default function Project() {
       setReportError(null);
       setChatError(null);
       try {
-        const response = await axios.get(`${API_PREFIX}/projects/${id}`);
+        const response = await apiClient.get(`${API_PREFIX}/projects/${id}`);
         applyProjectData(response.data);
         updateChatFromPayload(response.data);
       } catch (err) {
@@ -205,7 +206,7 @@ export default function Project() {
   const processProject = useCallback(
     async (id) => {
       try {
-        const response = await axios.post(`${API_PREFIX}/projects/${id}/process`);
+        const response = await apiClient.post(`${API_PREFIX}/projects/${id}/process`);
         const payload = response.data ?? {};
         if (payload.status) {
           setReportStatus(payload.status);
@@ -237,7 +238,7 @@ export default function Project() {
       setReportError(null);
 
       try {
-        await axios.post(`${API_PREFIX}/projects/${projectId}/upload`, formData, {
+        await apiClient.post(`${API_PREFIX}/projects/${projectId}/upload`, formData, {
           headers: { "Content-Type": "multipart/form-data" },
         });
         setReportStatus("analyzing");
@@ -260,7 +261,7 @@ export default function Project() {
       setChatLoading(true);
       setChatError(null);
       try {
-        const response = await axios.post(`${API_PREFIX}/projects/${projectId}/chat`, { message });
+        const response = await apiClient.post(`${API_PREFIX}/projects/${projectId}/chat`, { message });
         const payload = response.data ?? {};
         if (payload.project) {
           applyProjectData(payload.project, { preserveStatus: true });
@@ -327,7 +328,7 @@ export default function Project() {
             isLoading={sidebarLoading}
             error={sidebarError}
             onSelect={(_, id) => navigate(`/projects/${id}`)}
-            emptyMessage={sidebarLoading ? "Загрузка..." : "Проекты ещё не созданы"}
+            emptyMessage={sidebarLoading ? "Загрузка..." : "Пока нет проектов"}
           />
 
           <div className="space-y-6">

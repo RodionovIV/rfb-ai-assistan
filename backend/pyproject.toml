@@ -29,7 +29,7 @@ name = "AI Assistant"
 description = "AI Assistant backend service"
 
 [tool.ai_assistant_back.database]
-dsn = "postgresql+asyncpg://ai_assistant:ai_assistant@localhost:5432/ai_assistant"
+dsn = "postgresql+asyncpg://ai_assistant:ai_assistant@postgres:5432/ai_assistant"
 echo = false
 
 [tool.ai_assistant_back.redis]

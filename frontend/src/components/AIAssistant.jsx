@@ -17,7 +17,7 @@
 */
 
 import React, { useEffect, useState, useRef } from "react";
-import axios from "axios";
+import apiClient from "../services/apiClient.js";
 import { API_PREFIX } from "../config/api";
 
 export default function AIAssistant() {
@@ -35,7 +35,7 @@ export default function AIAssistant() {
     let mounted = true;
     (async () => {
       try {
-        const res = await axios.get(`${API_PREFIX}/topics`);
+        const res = await apiClient.get(`${API_PREFIX}/topics`);
         if (!mounted) return;
         // Expecting array of { id, title }
         const topics = Array.isArray(res.data) ? res.data : [];
@@ -105,7 +105,7 @@ export default function AIAssistant() {
       // Send to backend. Payload shape you can adapt.
       const payload = { conversationId: activeSessionId, content: text };
       console.log("Payload перед отправкой:", payload);
-      const res = await axios.post(`${API_PREFIX}/dialog`, payload);
+      const res = await apiClient.post(`${API_PREFIX}/dialog`, payload);
 
       // Expected response: { reply: '...', title?: 'Topic title' }
       const reply = (res.data && (res.data.reply ?? res.data.text ?? res.data.response)) || "(пустой ответ)";
