@@ -137,6 +137,7 @@ export default function Project() {
       const response = await axios.get(`${API_PREFIX}/projects`);
       const list = normalizeProjectsList(response.data);
       setProjects(list);
+      setSidebarError(null);
     } catch (err) {
       console.error("Failed to load projects list", err);
       setSidebarError("Не удалось загрузить список проектов");

@@ -33,6 +33,7 @@ export default function Dashboard() {
       const response = await axios.get(`${API_PREFIX}/projects`);
       const normalized = normalizeProjects(response.data);
       setProjects(normalized);
+      setError(null);
     } catch (err) {
       console.error("Failed to load projects", err);
       setError("Не удалось загрузить список проектов. Попробуйте обновить страницу позже.");
