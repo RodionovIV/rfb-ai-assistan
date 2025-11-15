@@ -7,6 +7,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
+from redis import Redis as RedisSync
 from redis import asyncio as redis_async
 from redis.exceptions import ResponseError
 from redisvl.index import SearchIndex
@@ -140,6 +141,17 @@ redis_client = redis_async.from_url(
     decode_responses=config.redis.decode_responses,
 )
 
+# ``redisvl`` still performs synchronous operations when creating indexes,
+# particularly when calling ``SearchIndex.exists`` which internally invokes
+# ``FT._LIST`` without awaiting the coroutine returned by an asynchronous
+# Redis client. To keep the rest of the application asynchronous while letting
+# ``SearchIndex`` function correctly, we provide it with a dedicated
+# synchronous Redis connection.
+redis_sync_client = RedisSync.from_url(
+    config.redis.url,
+    decode_responses=config.redis.decode_responses,
+)
+
 
 _VECTOR_INDEX_NAME = config.vector_index.name or "context-chunks-index"
 _VECTOR_INDEX_PREFIX = config.vector_index.prefix or "chunk"
@@ -170,7 +182,7 @@ VECTOR_INDEX_SCHEMA = IndexSchema.from_dict(
         ],
     }
 )
-vector_index = SearchIndex(schema=VECTOR_INDEX_SCHEMA, redis_client=redis_client)
+vector_index = SearchIndex(schema=VECTOR_INDEX_SCHEMA, redis_client=redis_sync_client)
 
 
 async def init_models() -> None:
