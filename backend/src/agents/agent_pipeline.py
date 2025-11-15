@@ -56,6 +56,7 @@ def run_langgraph_agent(query, prompt):
         result = agent.run(query=query)
         print(query)
         print(f"Ответ: {result['response']}")
+
         return result['response']
     except Exception as e:
         print(f"Ошибка: {e}")
@@ -71,13 +72,12 @@ def run_market_mapper_agent(documents, queries):
             api_key=api_key,
         )
 
-        queries = ["artificial intelligence", "machine learning"]
         result = agent.run(queries=queries)
 
         print(f"Запросы: {queries}")
         print(f"Найдено insights: {len(result.get('insights', []))}")
         for insight in result.get("insights", []):
-            print(f"   - {insight.get('topic')}: {insight.get('summary', '')}...")
+            print(f"   - {insight.get('topic')}: {insight.get('summary', '')}")
         
         return result
     except Exception as e:
@@ -102,7 +102,7 @@ def run_pitch_parser_agent(raw_slides):
         print(f"Найдено секций: {len(result.get('sections', []))}")
         for section in result.get("sections", []):
             print(f"   - {section.get('name')}: слайды {section.get('slides')}")
-            print(f"     Summary: {section.get('summary', '')}...")
+            print(f"     Summary: {section.get('summary', '')}")
         
         return result
     except Exception as e:
@@ -122,7 +122,7 @@ def run_web_scout_agent(queries):
         for finding in result.get("findings", []):
             print(f"   - {finding.get('title')}")
             print(f"     URL: {finding.get('url')}")
-            print(f"     Snippet: {finding.get('snippet', '')}...")
+            print(f"     Snippet: {finding.get('snippet', '')}")
         
         return result
     except Exception as e:
@@ -148,8 +148,8 @@ def run_report_writer_agent(project_id, pitch_result, market_result, web_result)
         )
 
         print(f"Отчет создан: {result.get('title')}")
-        print(f"Executive Summary: {result.get('executive_summary', '')}...")
-        print(f"Рекомендаций: {len(result.get('recommendations', []))}")
+        print(f"Основные положения: {result.get('executive_summary', '')}")
+        print(f"Рекомендации: {len(result.get('recommendations', []))}")
         for rec in result.get("recommendations", []):
             print(f"   - {rec.get('title')}")
         
@@ -191,12 +191,14 @@ def main():
     # prompt = "You are a helpful assistant. Answer concisely."
     # answer = run_langgraph_agent(query, prompt)
 
+    print("АНАЛИЗ ПИТЧА:")
     pitch_data = run_pitch_parser_agent(slides)
 
     queries = []
     for sec_res in pitch_data['sections']:
         queries.append(sec_res['summary'])
 
+    print("\n\nПОИСК В ИНТЕРНЕТЕ:")
     web_data = run_web_scout_agent(queries)
 
     documents = [
@@ -214,9 +216,13 @@ def main():
         ),
     ]
 
+    print("\n\nПОИСК ПО БАЗЕ:")
     market_data = run_market_mapper_agent(documents, queries)
     
-    report = run_report_writer_agent("test-project-123", pitch_data, market_data, web_data)
+    project_id = "test-project-123"
+    print("\n\nФормирование отчета:")
+    report = run_report_writer_agent(project_id, pitch_data, market_data, web_data)
+    print("\n\nПолный отчет:\n", report)
 
 if __name__ == "__main__":
     exit(main())
