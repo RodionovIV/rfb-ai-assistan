@@ -1,0 +1,30 @@
+# Минимальные зависимости для запуска test_agents.py
+# Установка: pip install -r requirements-test.txt
+
+asyncpg
+
+# LangGraph и LangChain для работы агентов
+langgraph
+langchain
+langchain-openai
+langchain-core
+
+# OpenAI API
+openai
+
+fastapi
+
+# Базовые зависимости проекта
+pydantic
+pydantic-settings
+pydantic-settings[toml]
+redis
+redisvl
+SQLAlchemy
+numpy
+
+# Для работы с векторным хранилищем (опционально, но используется в тестах)
+# faiss-cpu  # Раскомментируйте если нужен FAISS
+
+# Для реального поиска в интернете
+duckduckgo-search

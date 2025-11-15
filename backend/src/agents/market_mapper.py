@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import os
 from typing import Iterable, List
 
 from src.agents.base import Agent
+from src.agents.langgraph_agent import LangGraphAgent
 from src.agents.vector_store import BaseVectorStore, VectorDocument, create_vector_store
 from src.api.projects import MarketInsight, MarketMapperOutput
 
@@ -15,12 +17,33 @@ class MarketMapperAgent(Agent):
         knowledge_base: Iterable[VectorDocument] | None = None,
         vector_store: BaseVectorStore | None = None,
         top_k: int = 5,
+        use_llm: bool = True,
+        api_key: str | None = None,
+        model_name: str = "gpt-4o-mini",
     ) -> None:
         self.vector_store = vector_store or create_vector_store()
         self.top_k = top_k
+        self.use_llm = use_llm
         self.knowledge_base: List[VectorDocument] = list(knowledge_base or [])
         if self.knowledge_base:
             self.vector_store.add_texts(self.knowledge_base)
+
+        # Инициализируем LangGraph агента для генерации summary
+        if self.use_llm:
+            try:
+                self.llm_agent = LangGraphAgent(
+                    model_name=model_name,
+                    api_key=api_key or os.getenv("OPENAI_API_KEY"),
+                    system_prompt=(
+                        "Вы опытный рыночный аналитик. Проанализируйте предоставленные документы и составьте краткое, содержательную суммаризацию по теме рынка. Сосредоточьтесь на ключевых выводах, тенденциях и важной информации."
+                    ),
+                )
+            except ValueError:
+                # Если API ключ не указан, отключаем LLM
+                self.use_llm = False
+                self.llm_agent = None
+        else:
+            self.llm_agent = None
 
     def add_documents(self, documents: Iterable[VectorDocument]) -> None:
         docs = list(documents)
@@ -45,12 +68,35 @@ class MarketMapperAgent(Agent):
             )
         return MarketMapperOutput(insights=insights).model_dump()
 
+    def _compose_summary(self, query: str, documents: Iterable[VectorDocument]) -> str:
+        """Создает summary используя LLM агента или простой метод."""
+        if self.use_llm and self.llm_agent:
+            # Формируем контекст из найденных документов
+            context_text = "\n\n".join(
+                [f"Документ {i+1}:\n{doc.text}" for i, doc in enumerate(documents)]
+            )
+            
+            prompt = (
+                f"Проанализируйте следующие документы, относящиеся к '{query}' и предоставьте "
+                f"краткую суммаризацию с ключевыми выводами:\n\n{context_text}"
+            )
+            
+            try:
+                result = self.llm_agent.run(query=prompt)
+                return result.get("response", self._fallback_summary(query, documents))
+            except Exception:
+                # В случае ошибки используем fallback
+                return self._fallback_summary(query, documents)
+        else:
+            return self._fallback_summary(query, documents)
+
     @staticmethod
-    def _compose_summary(query: str, documents: Iterable[VectorDocument]) -> str:
+    def _fallback_summary(query: str, documents: Iterable[VectorDocument]) -> str:
+        """Простой метод создания summary без LLM."""
         snippets = [document.text[:200] for document in documents]
         unique_snippets = []
         for snippet in snippets:
             if snippet not in unique_snippets:
                 unique_snippets.append(snippet)
-        return f"Insights for '{query}': " + " | ".join(unique_snippets)
+        return f"Идеи для '{query}': " + " | ".join(unique_snippets)
 
