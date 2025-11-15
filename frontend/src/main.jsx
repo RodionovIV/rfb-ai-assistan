@@ -1,9 +1,10 @@
 import axios from "axios";
-import { API_BASE_URL } from "./config/api";
+import { getApiBaseUrl } from "./config/api";
 
 const resolveBaseUrl = () => {
-  if (API_BASE_URL) {
-    return API_BASE_URL;
+  const resolved = getApiBaseUrl();
+  if (resolved) {
+    return resolved;
   }
   if (typeof window !== "undefined" && window.location) {
     return `${window.location.protocol}//${window.location.host}`;
