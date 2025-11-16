@@ -487,14 +487,31 @@ export default function Project() {
   const documentPanelBodyClasses = useMemo(() => {
     const classes = ["flex flex-col gap-4"];
     if (shouldEnableDocumentCollapse) {
-      classes.push("transition-all duration-300 ease-out overflow-hidden origin-top");
+      classes.push(
+        "lg:transition-all lg:duration-300 lg:ease-out lg:overflow-hidden"
+      );
       if (isDocumentPanelCollapsed) {
-        classes.push("max-h-0 opacity-0 -translate-y-2 pointer-events-none");
+        classes.push(
+          "lg:opacity-0 lg:pointer-events-none lg:translate-x-4"
+        );
       } else {
-        classes.push("max-h-[2000px] opacity-100 translate-y-0");
+        classes.push("lg:opacity-100 lg:translate-x-0");
       }
     }
     return classes.join(" ");
+  }, [isDocumentPanelCollapsed, shouldEnableDocumentCollapse]);
+
+  const documentPanelClasses = useMemo(() => {
+    const base =
+      "bg-slate-900/60 border border-white/5 rounded-2xl shadow-xl text-slate-100 flex flex-col gap-4 transition-all duration-300 ease-out p-5 lg:flex-shrink-0";
+    if (!shouldEnableDocumentCollapse) {
+      return `${base} lg:w-[470px]`;
+    }
+    return `${base} ${
+      isDocumentPanelCollapsed
+        ? "lg:w-[90px] lg:px-3 lg:items-center"
+        : "lg:w-[480px] lg:px-5"
+    }`;
   }, [isDocumentPanelCollapsed, shouldEnableDocumentCollapse]);
 
   return (
@@ -512,15 +529,17 @@ export default function Project() {
           onDismissRenameError={handleDismissRenameError}
         />
 
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-          <ProjectChat
-            messages={chatMessages}
-            onSend={handleSendMessage}
-            isSending={chatLoading}
-            error={chatError}
-          />
+        <div className="flex flex-col lg:flex-row gap-8">
+          <div className="flex-1 min-w-0">
+            <ProjectChat
+              messages={chatMessages}
+              onSend={handleSendMessage}
+              isSending={chatLoading}
+              error={chatError}
+            />
+          </div>
 
-          <section className="bg-slate-900/60 border border-white/5 rounded-2xl p-5 shadow-xl text-slate-100 flex flex-col gap-4">
+          <section className={documentPanelClasses}>
             <DocumentPanelHeader
               type={shouldEnableDocumentCollapse ? "button" : undefined}
               onClick={toggleDocumentPanel}
@@ -531,7 +550,13 @@ export default function Project() {
                   : ""
               }`}
             >
-              <div>
+              <div
+                className={`${
+                  shouldEnableDocumentCollapse && isDocumentPanelCollapsed
+                    ? "lg:hidden"
+                    : ""
+                } flex-1 min-w-0`}
+              >
                 <h2 className="text-lg font-semibold">Документ проекта</h2>
                 {documentFilename ? (
                   <p
@@ -546,12 +571,18 @@ export default function Project() {
                   </p>
                 )}
               </div>
-              <div className="flex items-center gap-3 text-xs text-slate-300">
+              <div
+                className={`${
+                  shouldEnableDocumentCollapse && isDocumentPanelCollapsed
+                    ? "lg:hidden"
+                    : ""
+                } flex items-center gap-3 text-xs text-slate-300`}
+              >
                 {documentUpdatedAtLabel ? <span>Обновлено: {documentUpdatedAtLabel}</span> : null}
                 {shouldEnableDocumentCollapse ? (
                   <span
                     className={`inline-flex h-6 w-6 items-center justify-center rounded-full bg-slate-800/80 border border-white/10 transition-transform ${
-                      isDocumentPanelCollapsed ? "rotate-180" : "rotate-0"
+                      isDocumentPanelCollapsed ? "lg:rotate-90 rotate-180" : "lg:-rotate-90 rotate-0"
                     }`}
                     aria-hidden="true"
                   >
@@ -559,6 +590,24 @@ export default function Project() {
                   </span>
                 ) : null}
               </div>
+              {shouldEnableDocumentCollapse ? (
+                <div
+                  className={`${
+                    isDocumentPanelCollapsed ? "lg:flex" : "lg:hidden"
+                  } hidden flex-col items-center gap-3 text-center text-xs text-slate-300`}
+                >
+                  <span
+                    className="text-sm font-semibold tracking-[0.3em] text-slate-100"
+                    style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
+                  >
+                    Документ проекта
+                  </span>
+                  <span className="text-[11px] text-slate-400">Нажмите, чтобы открыть</span>
+                  <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-800/80 border border-white/10 transition-transform rotate-90" aria-hidden="true">
+                    ↓
+                  </span>
+                </div>
+              ) : null}
             </DocumentPanelHeader>
 
             <div className={documentPanelBodyClasses}>
