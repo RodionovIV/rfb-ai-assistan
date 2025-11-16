@@ -489,31 +489,35 @@ export default function Project() {
   const documentPanelBodyClasses = useMemo(() => {
     const classes = ["flex flex-col gap-4"];
     if (shouldEnableDocumentCollapse) {
-      classes.push(
-        "lg:transition-all lg:duration-300 lg:ease-out lg:overflow-hidden"
-      );
+      classes.push("lg:transition-all lg:duration-300 lg:ease-out");
       if (isDocumentPanelCollapsed) {
         classes.push(
-          "lg:opacity-0 lg:pointer-events-none lg:translate-x-4"
+          "lg:max-h-0 lg:opacity-0 lg:overflow-hidden lg:pointer-events-none lg:translate-x-4"
         );
       } else {
-        classes.push("lg:opacity-100 lg:translate-x-0");
+        classes.push("lg:max-h-none lg:opacity-100 lg:translate-x-0");
       }
     }
     return classes.join(" ");
   }, [isDocumentPanelCollapsed, shouldEnableDocumentCollapse]);
 
   const documentPanelClasses = useMemo(() => {
-    const base =
-      "bg-slate-900/60 border border-white/5 rounded-2xl shadow-xl text-slate-100 flex flex-col gap-4 transition-all duration-300 ease-out p-5 lg:flex-shrink-0 lg:self-start";
+    const classes = [
+      "bg-slate-900/60 border border-white/5 rounded-2xl shadow-xl text-slate-100 flex flex-col transition-all duration-300 ease-out p-5 lg:flex-shrink-0 lg:self-start",
+    ];
+
     if (!shouldEnableDocumentCollapse) {
-      return `${base} lg:w-[470px]`;
+      classes.push("gap-4 lg:w-[470px]");
+      return classes.join(" ");
     }
-    return `${base} ${
-      isDocumentPanelCollapsed
-        ? "lg:w-[90px] lg:px-3 lg:items-center"
-        : "lg:w-[480px] lg:px-5"
-    }`;
+
+    if (isDocumentPanelCollapsed) {
+      classes.push("gap-3 lg:gap-2 lg:w-[82px] lg:px-3 lg:py-4 lg:items-center");
+    } else {
+      classes.push("gap-4 lg:w-[480px] lg:px-5");
+    }
+
+    return classes.join(" ");
   }, [isDocumentPanelCollapsed, shouldEnableDocumentCollapse]);
 
   return (
@@ -596,16 +600,15 @@ export default function Project() {
                 <div
                   className={`${
                     isDocumentPanelCollapsed ? "lg:flex" : "lg:hidden"
-                  } hidden flex-col items-center gap-3 text-center text-xs text-slate-300`}
+                  } hidden flex-col items-center gap-1 text-center text-[11px] text-slate-300 py-2`}
                 >
                   <span
-                    className="text-sm font-semibold tracking-[0.3em] text-slate-100"
+                    className="text-[10px] font-semibold tracking-[0.25em] uppercase text-slate-100"
                     style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
                   >
                     Документ проекта
                   </span>
-                  <span className="text-[11px] text-slate-400">Нажмите, чтобы открыть</span>
-                  <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-800/80 border border-white/10 transition-transform rotate-90" aria-hidden="true">
+                  <span className="inline-flex h-5 w-5 text-[10px] items-center justify-center rounded-full bg-slate-800/80 border border-white/10 rotate-90" aria-hidden="true">
                     ↓
                   </span>
                 </div>
