@@ -13,6 +13,8 @@ from src.api.projects import (
     WebScoutOutput,
 )
 
+from src.agents.prompts.prompt_report_writer import BASE_PROMPT, REPORT_PROMPT, RECOMMEND_PROMPT
+
 
 class ReportWriterAgent(Agent):
     name = "report_writer"
@@ -26,21 +28,19 @@ class ReportWriterAgent(Agent):
         self.use_llm = use_llm
 
         # Инициализируем LangGraph агента для генерации отчетов
-        if self.use_llm:
-            try:
-                self.llm_agent = LangGraphAgent(
-                    model_name=model_name,
-                    api_key=api_key or os.getenv("OPENAI_API_KEY"),
-                    system_prompt=(
-                        "Вы являетесь опытным бизнес-аналитиком и составителем отчетов. Создавайте всеобъемлющие, хорошо структурированные суммаризации и рекомендации, основанные на анализе маркетинговых исследований и веб-находок. Будьте краткими, проницательными и практичными."
-                    ),
-                )
-            except ValueError:
-                # Если API ключ не указан, отключаем LLM
-                self.use_llm = False
-                self.llm_agent = None
-        else:
-            self.llm_agent = None
+        # if self.use_llm:
+        #     try:
+        self.llm_agent = LangGraphAgent(
+            model_name=model_name,
+            api_key=api_key or os.getenv("OPENAI_API_KEY"),
+            system_prompt=(BASE_PROMPT),
+        )
+        #     except ValueError:
+        #         # Если API ключ не указан, отключаем LLM
+        #         self.use_llm = False
+        #         self.llm_agent = None
+        # else:
+        #     self.llm_agent = None
 
     def run(
         self,
@@ -68,49 +68,46 @@ class ReportWriterAgent(Agent):
         self, *, pitch: PitchParserOutput, market: MarketMapperOutput, web: WebScoutOutput
     ) -> str:
         """Создает executive summary используя LLM или простой метод."""
-        if self.use_llm and self.llm_agent:
-            # Формируем контекст для LLM
-            pitch_info = "\n".join(
-                [f"- {section.name}: {section.summary[:200]}" for section in pitch.sections]
-            ) or "Питч разделы не найдены"
+        # if self.use_llm and self.llm_agent:
+        # Формируем контекст для LLM
+        pitch_info = "\n".join(
+            [f"- {section.name}: {section.summary[:200]}" for section in pitch.sections]
+        ) or "Питч разделы не найдены"
 
-            market_info = "\n".join(
-                [f"- {insight.topic}: {insight.summary[:200]}" for insight in market.insights]
-            ) or "Рыночные идеи не найдены"
+        market_info = "\n".join(
+            [f"- {insight.topic}: {insight.summary[:200]}" for insight in market.insights]
+        ) or "Рыночные идеи не найдены"
 
-            web_info = "\n".join(
-                [f"- {finding.title}: {finding.snippet[:200]}" for finding in web.findings]
-            ) or "Информация в интернете не найдена"
+        web_info = "\n".join(
+            [f"- {finding.title}: {finding.snippet[:200]}" for finding in web.findings]
+        ) or "Информация в интернете не найдена"
 
-            prompt = (
-                "Создайте всеобъемлющую суммаризацию (2-3 абзаца) для отчета о бизнес-исследовании на основе следующей информации: \n\n"
-                f"Питч разделы:\n{pitch_info}\n\n"
-                f"Рыночные идеи:\n{market_info}\n\n"
-                f"Находки в интернете:\n{web_info}\n\n"
-                "Предоставьте четкое и сжатое резюме, в котором будут освещены ключевые выводы и инсайты."
-            )
-
-            try:
-                result = self.llm_agent.run(query=prompt)
-                return result.get("response", self._fallback_summary(pitch, market, web))
-            except Exception:
-                return self._fallback_summary(pitch, market, web)
-        else:
-            return self._fallback_summary(pitch, market, web)
-
-    @staticmethod
-    def _fallback_summary(
-        pitch: PitchParserOutput, market: MarketMapperOutput, web: WebScoutOutput
-    ) -> str:
-        """Простой метод создания summary без LLM."""
-        pitch_sections = ", ".join(section.name for section in pitch.sections) or "No sections identified"
-        market_topics = ", ".join(insight.topic for insight in market.insights) or "No market insights"
-        web_sources = ", ".join(finding.title for finding in web.findings) or "No web findings"
-        return (
-            "Анализ питча охватывал следующие разделы: "
-            f"{pitch_sections}. Исследование рынка выделило {market_topics}. Поиск в интернете "
-            f"дал информацию: {web_sources}."
+        prompt = (
+            REPORT_PROMPT.format(pitch_info=pitch_info, market_info=market_info, web_info=web_info)
         )
+
+        # try:
+        result = self.llm_agent.run(query=prompt)
+        return result["response"]
+            # return result.get("response", self._fallback_summary(pitch, market, web))
+        # except Exception:
+        #     return self._fallback_summary(pitch, market, web)
+        # else:
+        #     return self._fallback_summary(pitch, market, web)
+
+    # @staticmethod
+    # def _fallback_summary(
+    #     pitch: PitchParserOutput, market: MarketMapperOutput, web: WebScoutOutput
+    # ) -> str:
+    #     """Простой метод создания summary без LLM."""
+    #     pitch_sections = ", ".join(section.name for section in pitch.sections) or "No sections identified"
+    #     market_topics = ", ".join(insight.topic for insight in market.insights) or "No market insights"
+    #     web_sources = ", ".join(finding.title for finding in web.findings) or "No web findings"
+    #     return (
+    #         "Анализ питча охватывал следующие разделы: "
+    #         f"{pitch_sections}. Исследование рынка выделило {market_topics}. Поиск в интернете "
+    #         f"дал информацию: {web_sources}."
+    #     )
 
     def _build_recommendations(
         self,
@@ -122,32 +119,29 @@ class ReportWriterAgent(Agent):
         if not market.insights:
             return []
 
-        if self.use_llm and self.llm_agent:
-            # Используем LLM для генерации более качественных рекомендаций
-            market_topics = ", ".join(insight.topic for insight in market.insights)
-            prompt = (
-                f"Основываясь на темах маркетинговых исследований {market_topics}, "
-                "сформулируйте 3-5 практических рекомендаций для дальнейшего изучения "
-                "или анализа. Для каждой рекомендации укажите название и краткое обоснование (1-2 предложения). "
-                "Формат: Название: [название] \n Обоснование: [обоснование]\n\n"
-            )
+        # if self.use_llm and self.llm_agent:
+        # Используем LLM для генерации более качественных рекомендаций
+        market_topics = ", ".join(insight.topic for insight in market.insights)
+        prompt = (
+            RECOMMEND_PROMPT.format(market_topics=market_topics)
+        )
 
-            try:
-                result = self.llm_agent.run(query=prompt)
-                response = result.get("response", "")
-                return self._parse_llm_recommendations(response, market)
-            except Exception:
-                pass
+        # try:
+        result = self.llm_agent.run(query=prompt)
+        response = result.get("response", "")
+        return self._parse_llm_recommendations(response, market)
+        # except Exception:
+        #     pass
 
         # Fallback на простой метод
-        recommendations = []
-        for insight in market.insights:
-            recommendation = ReportRecommendation(
-                title=f"Deep dive into {insight.topic}",
-                rationale=f"Top sources: {', '.join(insight.sources) if insight.sources else 'knowledge-base'}",
-            )
-            recommendations.append(recommendation)
-        return recommendations
+        # recommendations = []
+        # for insight in market.insights:
+        #     recommendation = ReportRecommendation(
+        #         title=f"Deep dive into {insight.topic}",
+        #         rationale=f"Top sources: {', '.join(insight.sources) if insight.sources else 'knowledge-base'}",
+        #     )
+        #     recommendations.append(recommendation)
+        # return recommendations
 
     @staticmethod
     def _parse_llm_recommendations(
@@ -197,14 +191,14 @@ class ReportWriterAgent(Agent):
             )
 
         # Если не удалось распарсить, используем fallback
-        if not recommendations:
-            for insight in market.insights:
-                recommendations.append(
-                    ReportRecommendation(
-                        title=f"Deep dive into {insight.topic}",
-                        rationale=f"Top sources: {', '.join(insight.sources) if insight.sources else 'knowledge-base'}",
-                    )
-                )
+        # if not recommendations:
+        #     for insight in market.insights:
+        #         recommendations.append(
+        #             ReportRecommendation(
+        #                 title=f"Deep dive into {insight.topic}",
+        #                 rationale=f"Top sources: {', '.join(insight.sources) if insight.sources else 'knowledge-base'}",
+        #             )
+        #         )
 
         return recommendations
 

@@ -9,6 +9,7 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
 from src.agents.base import Agent
 
+from src.agents.prompts.prompt_langgraph_agent import BASE_PROMPT
 
 class AgentState(TypedDict):
     """Состояние агента в графе LangGraph."""
@@ -47,9 +48,7 @@ class LangGraphAgent(Agent):
                 "OpenAI API key must be provided either as parameter or OPENAI_API_KEY environment variable"
             )
 
-        self.system_prompt = system_prompt or (
-            "Ты - лучший в мире ИИ помощник по проектам, который дает точные и подробные ответы. Используй предоставленный контекст для ответов на вопросы."
-        )
+        self.system_prompt = system_prompt or (BASE_PROMPT)
 
         # Инициализация LLM
         self.llm = ChatOpenAI(

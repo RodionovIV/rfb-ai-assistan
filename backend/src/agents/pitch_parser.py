@@ -9,6 +9,7 @@ from src.agents.langgraph_agent import LangGraphAgent
 from src.api.projects import PitchParserOutput, PitchParserSection, SlideModel
 from src.services.ingestion import SlideContent
 
+from src.agents.prompts.prompt_pitch_parser import BASE_PROMPT, CLASSIFY_SLIDE_PROMPT, SUMMARY_PROMPT
 
 class PitchParserAgent(Agent):
     name = "pitch_parser"
@@ -31,21 +32,19 @@ class PitchParserAgent(Agent):
         self.use_llm = use_llm
 
         # Инициализируем LangGraph агента для улучшенной классификации и summary
-        if self.use_llm:
-            try:
-                self.llm_agent = LangGraphAgent(
-                    model_name=model_name,
-                    api_key=api_key or os.getenv("OPENAI_API_KEY"),
-                    system_prompt=(
-                        "Вы являетесь экспертом в анализе презентаций. Классифицируйте слайды по соответствующим разделам и создавайте краткие суммаризации. Определите ключевую информацию о проблемах, решениях, рынке, бизнес-модели, привлекательности и команде."
-                    ),
-                )
-            except ValueError:
-                # Если API ключ не указан, отключаем LLM
-                self.use_llm = False
-                self.llm_agent = None
-        else:
-            self.llm_agent = None
+        # if self.use_llm:
+        #     try:
+        self.llm_agent = LangGraphAgent(
+            model_name=model_name,
+            api_key=api_key or os.getenv("OPENAI_API_KEY"),
+            system_prompt=(BASE_PROMPT),
+        )
+        #     except ValueError:
+        #         # Если API ключ не указан, отключаем LLM
+        #         self.use_llm = False
+        #         self.llm_agent = None
+        # else:
+        #     self.llm_agent = None
 
     def run(self, *, slides: List[SlideContent]) -> dict:
         slide_models = [SlideModel(index=slide.index, text=slide.text) for slide in slides]
@@ -53,29 +52,29 @@ class PitchParserAgent(Agent):
         summaries: Dict[str, List[str]] = defaultdict(list)
 
         # Используем LLM для улучшенной классификации, если доступно
-        if self.use_llm and self.llm_agent:
-            for slide in slides:
-                section = self._classify_slide_with_llm(slide)
-                if section:
-                    grouped[section].append(slide.index)
-                    summaries[section].append(slide.text)
-        else:
+        # if self.use_llm and self.llm_agent:
+        for slide in slides:
+            section = self._classify_slide_with_llm(slide)
+            if section:
+                grouped[section].append(slide.index)
+                summaries[section].append(slide.text)
+        # else:
             # Fallback на простую классификацию по ключевым словам
-            for slide in slides:
-                text_lower = slide.text.lower()
-                for section, keywords in self.section_hints.items():
-                    if any(keyword in text_lower for keyword in keywords):
-                        grouped[section].append(slide.index)
-                        summaries[section].append(slide.text)
+            # for slide in slides:
+            #     text_lower = slide.text.lower()
+            #     for section, keywords in self.section_hints.items():
+            #         if any(keyword in text_lower for keyword in keywords):
+            #             grouped[section].append(slide.index)
+            #             summaries[section].append(slide.text)
 
         # Генерируем summary для каждой секции
         sections = []
         for section, indices in sorted(grouped.items()):
             section_texts = summaries[section]
-            if self.use_llm and self.llm_agent:
-                summary = self._generate_summary_with_llm(section, section_texts)
-            else:
-                summary = " ".join(section_texts)[:500]
+            # if self.use_llm and self.llm_agent:
+            summary = self._generate_summary_with_llm(section, section_texts)
+            # else:
+            #     summary = " ".join(section_texts)[:500]
 
             sections.append(
                 PitchParserSection(
@@ -94,20 +93,19 @@ class PitchParserAgent(Agent):
 
         available_sections = ", ".join(self.section_hints.keys())
         prompt = (
-            f"Проанализируйте этот слайд и отнесите его к одному из следующих разделов: {available_sections}. "
-            f"Укажите только название раздела, ничего больше.\n\nТекст слайда:\n{slide.text}"
+            CLASSIFY_SLIDE_PROMPT.format(available_sections=available_sections, slide_text=slide.text)
         )
 
-        try:
-            result = self.llm_agent.run(query=prompt)
-            response = result.get("response", "").strip().lower()
-            
-            # Проверяем, соответствует ли ответ одной из секций
-            for section in self.section_hints.keys():
-                if section.lower() in response or response in section.lower():
-                    return section
-        except Exception:
-            pass
+        # try:
+        result = self.llm_agent.run(query=prompt)
+        response = result.get("response", "").strip().lower()
+        
+        # Проверяем, соответствует ли ответ одной из секций
+        for section in self.section_hints.keys():
+            if section.lower() in response or response in section.lower():
+                return section
+        # except Exception:
+        #     pass
 
         return None
 
@@ -118,8 +116,7 @@ class PitchParserAgent(Agent):
 
         combined_text = "\n\n".join([f"Slide {i+1}:\n{text}" for i, text in enumerate(texts)])
         prompt = (
-            f"Сделай короткую суммаризацию (максимум 500 символов) для '{section}' раздела "
-            f"основываясь на этих слайдах:\n\n{combined_text}"
+            SUMMARY_PROMPT.format(section=section, combined_text=combined_text)
         )
 
         try:
