@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -150,11 +151,20 @@ export function Routes({ children }) {
     }
   }
 
+  const previousParamsRef = useRef(null);
+
   useEffect(() => {
-    if (match) {
-      setParams(match.params ?? {});
-    } else {
-      setParams({});
+    const nextParams = match?.params ?? {};
+    const prevParams = previousParamsRef.current;
+
+    const hasChanged =
+      !prevParams ||
+      Object.keys(nextParams).length !== Object.keys(prevParams).length ||
+      Object.keys(nextParams).some((key) => nextParams[key] !== prevParams[key]);
+
+    if (hasChanged) {
+      previousParamsRef.current = nextParams;
+      setParams(nextParams);
     }
   }, [match, setParams]);
 
