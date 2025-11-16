@@ -220,6 +220,12 @@ async def init_models() -> None:
                 "ADD COLUMN IF NOT EXISTS original_name VARCHAR(255)"
             )
         )
+        await conn.execute(
+            text(
+                "ALTER TABLE IF EXISTS reports "
+                "ADD COLUMN IF NOT EXISTS context TEXT"
+            )
+        )
 
 
 async def init_vector_index(overwrite: bool = False) -> None:
