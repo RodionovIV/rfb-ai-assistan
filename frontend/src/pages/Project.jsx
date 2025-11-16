@@ -503,7 +503,7 @@ export default function Project() {
 
   const documentPanelClasses = useMemo(() => {
     const base =
-      "bg-slate-900/60 border border-white/5 rounded-2xl shadow-xl text-slate-100 flex flex-col gap-4 transition-all duration-300 ease-out p-5 lg:flex-shrink-0 lg:self-stretch lg:h-full";
+      "bg-slate-900/60 border border-white/5 rounded-2xl shadow-xl text-slate-100 flex flex-col gap-4 transition-all duration-300 ease-out p-5 lg:flex-shrink-0 lg:self-start";
     if (!shouldEnableDocumentCollapse) {
       return `${base} lg:w-[470px]`;
     }
@@ -529,14 +529,13 @@ export default function Project() {
           onDismissRenameError={handleDismissRenameError}
         />
 
-        <div className="flex flex-col lg:flex-row lg:items-stretch gap-8">
+        <div className="flex flex-col lg:flex-row lg:items-start gap-8">
           <div className="flex-1 min-w-0 flex">
             <ProjectChat
               messages={chatMessages}
               onSend={handleSendMessage}
               isSending={chatLoading}
               error={chatError}
-              className="h-full"
             />
           </div>
 

@@ -11,7 +11,6 @@ export default function ProjectChat({
   onSend,
   isSending = false,
   error,
-  className = "",
 }) {
   const [draft, setDraft] = useState("");
   const [localError, setLocalError] = useState(null);
@@ -48,9 +47,7 @@ export default function ProjectChat({
   };
 
   return (
-    <section
-      className={`bg-slate-900/60 border border-white/5 rounded-2xl p-5 shadow-xl text-slate-100 flex flex-col gap-4 ${className}`.trim()}
-    >
+    <section className="bg-slate-900/60 border border-white/5 rounded-2xl p-5 shadow-xl text-slate-100 flex flex-col gap-4">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-lg font-semibold">Чат проекта</h2>
         {isSending ? (
