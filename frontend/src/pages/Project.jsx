@@ -504,11 +504,8 @@ export default function Project() {
   }, [isDocumentPanelCollapsed, shouldEnableDocumentCollapse]);
 
   const documentPanelClasses = useMemo(() => {
-    const alignmentClasses = shouldEnableDocumentCollapse && isDocumentPanelCollapsed
-      ? "lg:self-stretch lg:h-full"
-      : "lg:self-start";
     const base =
-      `bg-slate-900/60 border border-white/5 rounded-2xl shadow-xl text-slate-100 flex flex-col gap-4 transition-all duration-300 ease-out p-5 lg:flex-shrink-0 ${alignmentClasses}`;
+      "bg-slate-900/60 border border-white/5 rounded-2xl shadow-xl text-slate-100 flex flex-col gap-4 transition-all duration-300 ease-out p-5 lg:flex-shrink-0 lg:self-start";
     if (!shouldEnableDocumentCollapse) {
       return `${base} lg:w-[470px]`;
     }
