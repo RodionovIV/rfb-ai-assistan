@@ -341,6 +341,22 @@ export default function Project() {
     setIsRatingModalOpen(true);
   }, [project?.rating, project?.ratingComment]);
 
+  const handleEditRating = useCallback(() => {
+    if (!hasProjectRating) return;
+    handleOpenRatingModal();
+  }, [hasProjectRating, handleOpenRatingModal]);
+
+  const handleRatingPreviewKeyDown = useCallback(
+    (event) => {
+      if (!hasProjectRating) return;
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        handleOpenRatingModal();
+      }
+    },
+    [hasProjectRating, handleOpenRatingModal]
+  );
+
   const handleCloseRatingModal = useCallback(() => {
     setIsRatingModalOpen(false);
     setRatingError(null);
@@ -364,7 +380,8 @@ export default function Project() {
         }
         const response = await apiClient.post(`${API_PREFIX}/projects/${projectId}/rate`, payload);
         applyProjectData(response.data, { preserveStatus: true });
-        setDocumentActionMessage("Спасибо за оценку!");
+        const successMessage = hasProjectRating ? "Отзыв обновлён" : "Спасибо за оценку!";
+        setDocumentActionMessage(successMessage);
         setDocumentActionError(null);
         setIsRatingModalOpen(false);
       } catch (err) {
@@ -378,7 +395,7 @@ export default function Project() {
         setRatingSubmitting(false);
       }
     },
-    [projectId, ratingValue, ratingComment, applyProjectData]
+    [projectId, ratingValue, ratingComment, applyProjectData, hasProjectRating]
   );
 
   const handleDeleteProject = useCallback(async () => {
@@ -683,20 +700,30 @@ export default function Project() {
                     Оценить проект
                   </button>
                 ) : (
-                  <div className="flex items-center gap-3 px-4 py-2 rounded-2xl bg-slate-800/70 border border-white/10 text-slate-200">
-                    <div className="text-2xl text-amber-300" aria-hidden="true">
-                      ★
-                    </div>
-                    <div className="text-sm leading-tight">
-                      <p className="font-semibold text-slate-100">
-                        Ваша оценка: {project?.rating} / 5
-                      </p>
-                      {project?.ratingComment ? (
-                        <p className="text-slate-300 max-w-xs" title={project.ratingComment}>
-                          {project.ratingComment}
+                  <div
+                    className="flex flex-col gap-1 px-4 py-2 rounded-2xl bg-slate-800/70 border border-white/10 text-slate-200 cursor-pointer focus-within:ring-2 focus-within:ring-amber-300/40"
+                    role="button"
+                    tabIndex={0}
+                    onDoubleClick={handleEditRating}
+                    onKeyDown={handleRatingPreviewKeyDown}
+                    title="Дважды нажмите, чтобы изменить отзыв"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="text-2xl text-amber-300" aria-hidden="true">
+                        ★
+                      </div>
+                      <div className="text-sm leading-tight">
+                        <p className="font-semibold text-slate-100">
+                          Ваша оценка: {project?.rating} / 5
                         </p>
-                      ) : null}
+                        {project?.ratingComment ? (
+                          <p className="text-slate-300 max-w-xs" title={project.ratingComment}>
+                            {project.ratingComment}
+                          </p>
+                        ) : null}
+                      </div>
                     </div>
+                    <p className="text-xs text-slate-500">Дважды нажмите, чтобы изменить отзыв</p>
                   </div>
                 )}
                 <button
