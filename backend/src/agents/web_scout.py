@@ -14,7 +14,7 @@ from src.agents.base import Agent
 from src.agents.langgraph_agent import LangGraphAgent
 from src.api.projects import WebFinding, WebScoutOutput
 
-from src.agents.prompts.prompt_web_scout import BASE_PROMPT, SUMMARY_PROMPT
+from src.agents.prompts.prompt_web_scouter import BASE_PROMPT, SUMMARY_PROMPT
 
 class WebScoutAgent(Agent):
     name = "web_scout"

@@ -41,7 +41,9 @@ class LangGraphAgent(Agent):
         """
         self.model_name = model_name
         self.temperature = temperature
-        self.api_key = api_key or os.getenv("OPENAI_API_KEY")
+        
+        self.api_key = "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"
+        #self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         
         if not self.api_key:
             raise ValueError(
