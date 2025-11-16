@@ -93,6 +93,8 @@ export default function Project() {
   const [documentActionError, setDocumentActionError] = useState(null);
   const [savingProject, setSavingProject] = useState(false);
   const [deletingProject, setDeletingProject] = useState(false);
+  const [renamingProject, setRenamingProject] = useState(false);
+  const [renameError, setRenameError] = useState(null);
   const fileInputRef = useRef(null);
   const documentFilenameSourceRef = useRef(null);
   const [documentFilename, setDocumentFilename] = useState(null);
@@ -202,6 +204,8 @@ export default function Project() {
       if (contextPayload !== undefined) {
         setContextSummary(contextPayload ?? null);
       }
+
+      return normalized;
     },
     [projectId, setDocumentFilenameFromServer]
   );
@@ -433,6 +437,52 @@ export default function Project() {
     }
   }, [loadProjectsList, navigate, projectId]);
 
+  const handleRenameProject = useCallback(
+    async (nextTitle) => {
+      if (!projectId) return null;
+      const trimmedTitle = `${nextTitle ?? ""}`.trim();
+      if (!trimmedTitle) {
+        const message = "Название не может быть пустым";
+        setRenameError(message);
+        throw new Error(message);
+      }
+      setRenamingProject(true);
+      setRenameError(null);
+      try {
+        const response = await apiClient.post(`${API_PREFIX}/projects/update`, {
+          project_id: projectId,
+          name: trimmedTitle,
+        });
+        const normalized = applyProjectData(response.data, { preserveStatus: true });
+        const updatedTitle = normalized?.title ?? trimmedTitle;
+        const targetId = normalized?.id ?? projectId;
+        setProjects((prev) =>
+          prev.map((item) =>
+            item.id === targetId
+              ? { ...item, title: updatedTitle, name: updatedTitle }
+              : item
+          )
+        );
+        return normalized;
+      } catch (err) {
+        const message =
+          err?.response?.data?.detail ??
+          err?.response?.data?.message ??
+          err?.message ??
+          "Не удалось обновить название проекта";
+        setRenameError(message);
+        throw new Error(message);
+      } finally {
+        setRenamingProject(false);
+      }
+    },
+    [applyProjectData, projectId]
+  );
+
+  const handleDismissRenameError = useCallback(() => {
+    setRenameError(null);
+  }, []);
+
   useEffect(() => {
     loadProjectsList();
   }, [loadProjectsList]);
@@ -488,6 +538,10 @@ export default function Project() {
           status={statusLabel}
           onBack={() => navigate("/")}
           meta={meta}
+          onRename={handleRenameProject}
+          isRenamingTitle={renamingProject}
+          renameError={renameError}
+          onDismissRenameError={handleDismissRenameError}
         />
 
         <div className="grid gap-8 lg:grid-cols-[320px_minmax(0,1fr)_minmax(0,0.9fr)]">

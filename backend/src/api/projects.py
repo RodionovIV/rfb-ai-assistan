@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class ProjectCreateRequest(BaseModel):
@@ -12,6 +12,26 @@ class ProjectCreateRequest(BaseModel):
     description: Optional[str] = Field(
         default=None,
         description="Optional project description or context",
+    )
+
+
+class ProjectUpdateRequest(BaseModel):
+    """Schema for project update requests."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    project_id: str = Field(
+        ...,
+        alias="id",
+        description="Identifier of the project to update",
+    )
+    name: Optional[str] = Field(
+        default=None,
+        description="Updated project name",
+    )
+    description: Optional[str] = Field(
+        default=None,
+        description="Updated project description",
     )
 
 

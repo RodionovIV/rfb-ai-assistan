@@ -14,6 +14,7 @@ from src.api.projects import (
     ProjectMessage,
     ProjectProcessResponse,
     ProjectResponse,
+    ProjectUpdateRequest,
 )
 from src.routes.router import base_router
 from src.settings.params.api import API
@@ -44,6 +45,28 @@ async def create_project(
     service: ProjectsService = Depends(get_projects_service),
 ) -> ProjectResponse:
     project = await service.create_project(name=request.name, description=request.description)
+    return _to_response(project)
+
+
+@router.post("/update", response_model=ProjectResponse)
+async def update_project(
+    request: ProjectUpdateRequest,
+    service: ProjectsService = Depends(get_projects_service),
+) -> ProjectResponse:
+    if request.name is None and request.description is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No update fields provided",
+        )
+    try:
+        project = await service.update_project(
+            project_id=request.project_id,
+            name=request.name,
+            description=request.description,
+        )
+    except ProjectNotFoundError as exc:  # pragma: no cover - FastAPI handles raising
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found") from exc
+
     return _to_response(project)
 
 
