@@ -484,6 +484,14 @@ export default function Project() {
     setIsDocumentPanelCollapsed((prev) => !prev);
   }, [shouldEnableDocumentCollapse]);
 
+  const mainLayoutClasses = useMemo(() => {
+    const base = "flex flex-col lg:flex-row gap-8";
+    if (shouldEnableDocumentCollapse && isDocumentPanelCollapsed) {
+      return `${base} lg:items-stretch`;
+    }
+    return `${base} lg:items-start`;
+  }, [isDocumentPanelCollapsed, shouldEnableDocumentCollapse]);
+
   const documentPanelBodyClasses = useMemo(() => {
     const classes = ["flex flex-col gap-4"];
     if (shouldEnableDocumentCollapse) {
@@ -502,8 +510,11 @@ export default function Project() {
   }, [isDocumentPanelCollapsed, shouldEnableDocumentCollapse]);
 
   const documentPanelClasses = useMemo(() => {
+    const alignmentClasses = shouldEnableDocumentCollapse && isDocumentPanelCollapsed
+      ? "lg:self-stretch lg:h-full"
+      : "lg:self-start";
     const base =
-      "bg-slate-900/60 border border-white/5 rounded-2xl shadow-xl text-slate-100 flex flex-col gap-4 transition-all duration-300 ease-out p-5 lg:flex-shrink-0 lg:self-start";
+      `bg-slate-900/60 border border-white/5 rounded-2xl shadow-xl text-slate-100 flex flex-col gap-4 transition-all duration-300 ease-out p-5 lg:flex-shrink-0 ${alignmentClasses}`;
     if (!shouldEnableDocumentCollapse) {
       return `${base} lg:w-[470px]`;
     }
@@ -529,7 +540,7 @@ export default function Project() {
           onDismissRenameError={handleDismissRenameError}
         />
 
-        <div className="flex flex-col lg:flex-row lg:items-start gap-8">
+        <div className={mainLayoutClasses}>
           <div className="flex-1 min-w-0 flex">
             <ProjectChat
               messages={chatMessages}
