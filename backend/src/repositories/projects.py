@@ -39,6 +39,23 @@ class ProjectRepository(BaseRepository):
         if project is not None:
             await self.session.delete(project)
 
+    async def update(
+        self,
+        project_id: uuid.UUID,
+        *,
+        name: str | None = None,
+        description: str | None = None,
+    ) -> Project | None:
+        project = await self.get(project_id)
+        if project is None:
+            return None
+        if name is not None:
+            project.name = name
+        if description is not None:
+            project.description = description
+        await self.session.flush()
+        return project
+
     async def bulk_create(self, projects: Iterable[tuple[str, str | None]]) -> list[Project]:
         created: list[Project] = []
         for name, description in projects:

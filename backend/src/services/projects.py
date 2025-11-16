@@ -132,6 +132,26 @@ class ProjectsService:
         await self._session.commit()
         return project_payload
 
+    async def update_project(
+        self,
+        project_id: str,
+        *,
+        name: str | None = None,
+        description: str | None = None,
+    ) -> Project:
+        project = await self._get_project_or_raise(project_id)
+        updates: dict[str, str | None] = {}
+        if name is not None:
+            updates["name"] = name
+        if description is not None:
+            updates["description"] = description
+        if updates:
+            await self._projects.update(project.id, **updates)
+            await self._session.commit()
+        updated = await self._projects.get(project.id)
+        assert updated is not None
+        return await self._build_project(updated)
+
     async def add_message(
         self,
         *,
