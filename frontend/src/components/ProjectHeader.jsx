@@ -98,16 +98,15 @@ export default function ProjectHeader({
               </form>
             ) : (
               <div className="flex flex-wrap items-center gap-3">
-                <h1 className="text-2xl font-bold tracking-wide">{resolvedTitle}</h1>
-                {canEditTitle ? (
-                  <button
-                    type="button"
-                    onClick={startEditing}
-                    className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-white/15 text-slate-200 hover:bg-slate-800/70"
-                  >
-                    Редактировать
-                  </button>
-                ) : null}
+                <h1
+                  className={`text-2xl font-bold tracking-wide ${
+                    canEditTitle ? "cursor-pointer select-none" : ""
+                  }`}
+                  onDoubleClick={canEditTitle ? startEditing : undefined}
+                  title={canEditTitle ? "Дважды кликните, чтобы переименовать" : undefined}
+                >
+                  {resolvedTitle}
+                </h1>
               </div>
             )}
           </div>
