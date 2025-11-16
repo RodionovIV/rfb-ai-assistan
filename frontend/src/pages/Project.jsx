@@ -29,7 +29,12 @@ const getLatestDocumentName = (files) => {
   const rawValue =
     typeof last === "string"
       ? last
-      : last?.filename ?? last?.name ?? last?.path ?? last?.original_name ?? null;
+      : last?.original_name ??
+        last?.filename ??
+        last?.name ??
+        last?.path ??
+        last?.stored_path ??
+        null;
   if (!rawValue) {
     return null;
   }
@@ -371,7 +376,8 @@ export default function Project() {
       setDocumentActionError(null);
       try {
         const uploadResponse = await handleUpload(file);
-        const uploadedName = uploadResponse?.filename ?? file.name;
+        const uploadedName =
+          uploadResponse?.original_name ?? uploadResponse?.filename ?? file.name;
         setDocumentFilenameFromUpload(uploadedName);
         setDocumentActionMessage("Документ загружен");
       } catch (err) {

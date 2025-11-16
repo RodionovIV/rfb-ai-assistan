@@ -44,11 +44,17 @@ class ProjectMessage:
 
 
 @dataclass(slots=True)
+class ProjectFile:
+    path: str
+    original_name: str | None = None
+
+
+@dataclass(slots=True)
 class Project:
     id: str
     name: str
     description: str | None
-    files: list[str] = field(default_factory=list)
+    files: list[ProjectFile] = field(default_factory=list)
     processed: bool = False
     analysis_summary: str | None = None
     history: list[ProjectMessage] = field(default_factory=list)
@@ -86,6 +92,7 @@ class ProjectsService:
             self._files,
             project_id=project.id,
             path=ingestion.stored_path,
+            original_name=ingestion.original_filename,
         )
 
         await self._register_slides(project_id=project.id, file=file_record, ingestion=ingestion)
@@ -210,7 +217,7 @@ class ProjectsService:
             id=str(project.id),
             name=project.name,
             description=project.description,
-            files=[file.path for file in files],
+            files=[ProjectFile(path=file.path, original_name=file.original_name) for file in files],
             processed=bool(reports),
             analysis_summary=analysis_summary,
             history=history,
@@ -291,9 +298,15 @@ class ProjectService:
         *,
         project_id: uuid.UUID,
         path: str,
+        original_name: str | None = None,
         checksum: str | None = None,
     ) -> File:
-        return await repository.create(project_id=project_id, path=path, checksum=checksum)
+        return await repository.create(
+            project_id=project_id,
+            path=path,
+            original_name=original_name,
+            checksum=checksum,
+        )
 
     async def register_context_chunk(
         self,

@@ -58,6 +58,7 @@ class File(Base, TimestampMixin):
         ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
     )
     path: Mapped[str] = mapped_column(String(512), nullable=False)
+    original_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     checksum: Mapped[str | None] = mapped_column(String(128), nullable=True)
 
     project: Mapped[Project] = relationship("Project", back_populates="files")
