@@ -53,6 +53,9 @@ const normalizeProject = (project, fallbackId) => ({
   report: extractReport(project),
   reportUpdatedAt: project?.updated_at ?? project?.report_updated_at ?? project?.modified_at ?? null,
   context: project?.context_summary ?? project?.context ?? project?.metadata?.context ?? null,
+  rating: typeof project?.rating === "number" ? project.rating : project?.score ?? null,
+  ratingComment:
+    project?.rating_comment ?? project?.ratingComment ?? project?.feedback ?? null,
   files: Array.isArray(project?.files)
     ? project.files
     : project?.documents ?? project?.document_paths ?? [],
@@ -63,6 +66,8 @@ const normalizeHistory = (payload) => {
   if (Array.isArray(payload)) return payload;
   return payload.history ?? payload.messages ?? payload.chat ?? [];
 };
+
+const RATING_VALUES = [1, 2, 3, 4, 5];
 
 export default function Project() {
   const { projectId } = useParams();
@@ -79,7 +84,6 @@ export default function Project() {
   const [chatError, setChatError] = useState(null);
   const [documentActionMessage, setDocumentActionMessage] = useState(null);
   const [documentActionError, setDocumentActionError] = useState(null);
-  const [savingProject, setSavingProject] = useState(false);
   const [deletingProject, setDeletingProject] = useState(false);
   const [renamingProject, setRenamingProject] = useState(false);
   const [renameError, setRenameError] = useState(null);
@@ -87,6 +91,11 @@ export default function Project() {
   const documentFilenameSourceRef = useRef(null);
   const [documentFilename, setDocumentFilename] = useState(null);
   const [isDocumentPanelCollapsed, setIsDocumentPanelCollapsed] = useState(false);
+  const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
+  const [ratingValue, setRatingValue] = useState(5);
+  const [ratingComment, setRatingComment] = useState("");
+  const [ratingSubmitting, setRatingSubmitting] = useState(false);
+  const [ratingError, setRatingError] = useState(null);
 
   const resetDocumentFilename = useCallback(() => {
     documentFilenameSourceRef.current = null;
@@ -137,6 +146,8 @@ export default function Project() {
         return null;
     }
   }, [project?.status, reportStatus]);
+
+  const hasProjectRating = typeof project?.rating === "number";
 
   const applyProjectData = useCallback(
     (payload, options = {}) => {
@@ -237,30 +248,6 @@ export default function Project() {
     [applyProjectData, updateChatFromPayload]
   );
 
-  const processProject = useCallback(
-    async (id) => {
-      if (!id) return null;
-      setReportStatus("analyzing");
-      try {
-        const response = await apiClient.post(`${API_PREFIX}/projects/${id}/process`);
-        const payload = response.data ?? {};
-        if (payload.details) {
-          setReport(payload.details);
-          setReportUpdatedAt(new Date().toISOString());
-        }
-        setReportStatus("ready");
-        return payload;
-      } catch (err) {
-        console.error("Project processing failed", err);
-        const message = err?.response?.data?.message ?? "Не удалось обработать проект";
-        setReportStatus("error");
-        setReportError(message);
-        throw err;
-      }
-    },
-    []
-  );
-
   const handleUpload = useCallback(
     async (file) => {
       if (!projectId) return null;
@@ -347,23 +334,52 @@ export default function Project() {
     [handleUpload, setDocumentFilenameFromUpload]
   );
 
-  const handleSaveProject = useCallback(async () => {
-    if (!projectId) return;
-    setSavingProject(true);
-    setDocumentActionMessage(null);
-    setDocumentActionError(null);
-    try {
-      await processProject(projectId);
-      await loadProjectDetails(projectId, { skipStatusUpdate: true });
-      setDocumentActionMessage("Проект сохранён");
-    } catch (err) {
-      const message =
-        err?.response?.data?.message ?? err?.message ?? "Не удалось сохранить проект";
-      setDocumentActionError(message);
-    } finally {
-      setSavingProject(false);
-    }
-  }, [loadProjectDetails, processProject, projectId]);
+  const handleOpenRatingModal = useCallback(() => {
+    setRatingValue(typeof project?.rating === "number" ? project.rating : 5);
+    setRatingComment(project?.ratingComment ?? "");
+    setRatingError(null);
+    setIsRatingModalOpen(true);
+  }, [project?.rating, project?.ratingComment]);
+
+  const handleCloseRatingModal = useCallback(() => {
+    setIsRatingModalOpen(false);
+    setRatingError(null);
+  }, []);
+
+  const handleSubmitRating = useCallback(
+    async (event) => {
+      event?.preventDefault?.();
+      if (!projectId) return;
+      if (!ratingValue) {
+        setRatingError("Пожалуйста, выберите количество звёзд");
+        return;
+      }
+      setRatingSubmitting(true);
+      setRatingError(null);
+      try {
+        const payload = { rating: ratingValue };
+        const trimmedComment = ratingComment.trim();
+        if (trimmedComment) {
+          payload.comment = trimmedComment;
+        }
+        const response = await apiClient.post(`${API_PREFIX}/projects/${projectId}/rate`, payload);
+        applyProjectData(response.data, { preserveStatus: true });
+        setDocumentActionMessage("Спасибо за оценку!");
+        setDocumentActionError(null);
+        setIsRatingModalOpen(false);
+      } catch (err) {
+        const message =
+          err?.response?.data?.detail ??
+          err?.response?.data?.message ??
+          err?.message ??
+          "Не удалось отправить оценку";
+        setRatingError(message);
+      } finally {
+        setRatingSubmitting(false);
+      }
+    },
+    [projectId, ratingValue, ratingComment, applyProjectData]
+  );
 
   const handleDeleteProject = useCallback(async () => {
     if (!projectId) return;
@@ -658,18 +674,31 @@ export default function Project() {
                 >
                   {reportStatus === "uploading" ? "Загружаем..." : "Загрузить"}
                 </button>
-                <button
-                  type="button"
-                  onClick={handleSaveProject}
-                  disabled={savingProject}
-                  className={`px-4 py-2.5 rounded-xl font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 ${
-                    savingProject
-                      ? "bg-emerald-800 text-emerald-200 cursor-not-allowed"
-                      : "bg-emerald-500 hover:bg-emerald-400 text-slate-900 focus:ring-emerald-200"
-                  }`}
-                >
-                  {savingProject ? "Сохраняем..." : "Сохранить проект"}
-                </button>
+                {!hasProjectRating ? (
+                  <button
+                    type="button"
+                    onClick={handleOpenRatingModal}
+                    className="px-4 py-2.5 rounded-xl font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 bg-amber-400 text-slate-900 hover:bg-amber-300 focus:ring-amber-200"
+                  >
+                    Оценить проект
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-3 px-4 py-2 rounded-2xl bg-slate-800/70 border border-white/10 text-slate-200">
+                    <div className="text-2xl text-amber-300" aria-hidden="true">
+                      ★
+                    </div>
+                    <div className="text-sm leading-tight">
+                      <p className="font-semibold text-slate-100">
+                        Ваша оценка: {project?.rating} / 5
+                      </p>
+                      {project?.ratingComment ? (
+                        <p className="text-slate-300 max-w-xs" title={project.ratingComment}>
+                          {project.ratingComment}
+                        </p>
+                      ) : null}
+                    </div>
+                  </div>
+                )}
                 <button
                   type="button"
                   onClick={handleDeleteProject}
@@ -710,6 +739,88 @@ export default function Project() {
           </section>
         </div>
       </div>
+      {isRatingModalOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6 bg-slate-950/70 backdrop-blur-sm">
+          <div className="w-full max-w-lg bg-slate-900 border border-white/10 rounded-3xl shadow-2xl text-slate-100 p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xl font-semibold">Оцените проект</h3>
+              <button
+                type="button"
+                onClick={handleCloseRatingModal}
+                className="text-slate-400 hover:text-slate-100 transition-colors"
+                aria-label="Закрыть форму оценки"
+              >
+                ×
+              </button>
+            </div>
+            <form className="space-y-4" onSubmit={handleSubmitRating}>
+              <label className="flex flex-col gap-2 text-sm">
+                <span className="uppercase tracking-widest text-slate-400">Комментарий</span>
+                <textarea
+                  value={ratingComment}
+                  onChange={(event) => setRatingComment(event.target.value)}
+                  rows={4}
+                  placeholder="Поделитесь впечатлениями от работы с проектом"
+                  className="w-full rounded-2xl bg-slate-950/40 border border-white/10 px-4 py-3 text-base text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-300"
+                />
+              </label>
+              <div className="space-y-3">
+                <p className="text-sm uppercase tracking-widest text-slate-400">Оценка</p>
+                <div className="flex items-center justify-center gap-2">
+                  {RATING_VALUES.map((value) => {
+                    const isActive = value <= ratingValue;
+                    return (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => setRatingValue(value)}
+                        className={`h-12 w-12 rounded-2xl border transition-colors ${
+                          isActive
+                            ? "bg-amber-400/20 border-amber-300 text-amber-200"
+                            : "bg-slate-900/60 border-white/10 text-slate-500"
+                        }`}
+                        aria-label={`Поставить ${value} ${value === 1 ? "звезду" : "звёзды"}`}
+                      >
+                        <span className="text-2xl" aria-hidden="true">
+                          {isActive ? "★" : "☆"}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-center text-sm text-slate-400">
+                  Выбрано: {ratingValue} / 5
+                </p>
+              </div>
+              {ratingError ? (
+                <div className="text-sm text-red-200 bg-red-900/40 border border-red-700/40 rounded-2xl px-4 py-2">
+                  {ratingError}
+                </div>
+              ) : null}
+              <div className="flex flex-wrap justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={handleCloseRatingModal}
+                  className="px-4 py-2 rounded-2xl border border-white/10 text-slate-200 hover:bg-slate-800/70"
+                >
+                  Отмена
+                </button>
+                <button
+                  type="submit"
+                  disabled={!ratingValue || ratingSubmitting}
+                  className={`px-5 py-2 rounded-2xl font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 ${
+                    !ratingValue || ratingSubmitting
+                      ? "bg-amber-900/30 text-amber-200 cursor-not-allowed"
+                      : "bg-amber-400 text-slate-900 hover:bg-amber-300 focus:ring-amber-200"
+                  }`}
+                >
+                  {ratingSubmitting ? "Отправляем..." : "Оценить"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

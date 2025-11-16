@@ -42,6 +42,8 @@ class Project(Base, TimestampMixin):
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    rating: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    rating_comment: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     files: Mapped[list["File"]] = relationship("File", back_populates="project", cascade="all, delete-orphan")
     reports: Mapped[list["Report"]] = relationship("Report", back_populates="project", cascade="all, delete-orphan")
@@ -224,6 +226,18 @@ async def init_models() -> None:
             text(
                 "ALTER TABLE IF EXISTS reports "
                 "ADD COLUMN IF NOT EXISTS context TEXT"
+            )
+        )
+        await conn.execute(
+            text(
+                "ALTER TABLE IF EXISTS projects "
+                "ADD COLUMN IF NOT EXISTS rating INTEGER"
+            )
+        )
+        await conn.execute(
+            text(
+                "ALTER TABLE IF EXISTS projects "
+                "ADD COLUMN IF NOT EXISTS rating_comment TEXT"
             )
         )
 

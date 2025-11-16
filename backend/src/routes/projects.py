@@ -13,6 +13,7 @@ from src.api.projects import (
     ProjectListResponse,
     ProjectMessage,
     ProjectProcessResponse,
+    ProjectRateRequest,
     ProjectResponse,
     ProjectUpdateRequest,
 )
@@ -149,6 +150,24 @@ async def project_chat(
     history_models: List[ProjectMessage] = [_to_message(message) for message in history]
 
     return ProjectChatResponse(project=_to_response(project), reply=reply_model, history=history_models)
+
+
+@router.post("/{project_id}/rate", response_model=ProjectResponse)
+async def rate_project(
+    project_id: str,
+    request: ProjectRateRequest,
+    service: ProjectsService = Depends(get_projects_service),
+) -> ProjectResponse:
+    try:
+        project = await service.rate_project(
+            project_id=project_id,
+            rating=request.rating,
+            comment=request.comment,
+        )
+    except ProjectNotFoundError as exc:  # pragma: no cover - FastAPI handles raising
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found") from exc
+
+    return _to_response(project)
 
 
 base_router.include_router(router)

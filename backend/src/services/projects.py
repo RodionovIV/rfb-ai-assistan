@@ -67,6 +67,8 @@ class Project:
     processed: bool = False
     analysis_summary: str | None = None
     context_summary: str | None = None
+    rating: int | None = None
+    rating_comment: str | None = None
     history: list[ProjectMessage] = field(default_factory=list)
 
 
@@ -192,6 +194,25 @@ class ProjectsService:
         assert updated is not None
         return await self._build_project(updated)
 
+    async def rate_project(
+        self,
+        *,
+        project_id: str,
+        rating: int,
+        comment: str | None = None,
+    ) -> Project:
+        project = await self._get_project_or_raise(project_id)
+        normalized_comment = comment.strip() if comment else None
+        await self._projects.update(
+            project.id,
+            rating=rating,
+            rating_comment=normalized_comment,
+        )
+        await self._session.commit()
+        updated = await self._projects.get(project.id)
+        assert updated is not None
+        return await self._build_project(updated)
+
     async def add_message(
         self,
         *,
@@ -304,6 +325,8 @@ class ProjectsService:
             processed=bool(reports),
             analysis_summary=analysis_summary,
             context_summary=context_summary,
+            rating=project.rating,
+            rating_comment=project.rating_comment,
             history=history,
         )
 
