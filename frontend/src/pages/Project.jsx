@@ -18,6 +18,25 @@ const extractReport = (payload) => {
   );
 };
 
+const getLatestDocumentName = (files) => {
+  if (!Array.isArray(files) || !files.length) {
+    return null;
+  }
+  const last = files[files.length - 1];
+  if (!last) {
+    return null;
+  }
+  const rawValue =
+    typeof last === "string"
+      ? last
+      : last?.filename ?? last?.name ?? last?.path ?? last?.original_name ?? null;
+  if (!rawValue) {
+    return null;
+  }
+  const segments = `${rawValue}`.split(/[\\/]/);
+  return segments[segments.length - 1] || rawValue;
+};
+
 const normalizeProject = (project, fallbackId) => ({
   id: project?.id ?? project?.project_id ?? project?.uuid ?? project?.slug ?? fallbackId,
   title: project?.title ?? project?.name ?? project?.display_name ?? `Проект ${fallbackId}`,
@@ -30,6 +49,9 @@ const normalizeProject = (project, fallbackId) => ({
   report: extractReport(project),
   reportUpdatedAt: project?.updated_at ?? project?.report_updated_at ?? project?.modified_at ?? null,
   context: project?.context_summary ?? project?.context ?? project?.metadata?.context ?? null,
+  files: Array.isArray(project?.files)
+    ? project.files
+    : project?.documents ?? project?.document_paths ?? [],
 });
 
 const normalizeHistory = (payload) => {
@@ -67,6 +89,40 @@ export default function Project() {
   const [savingProject, setSavingProject] = useState(false);
   const [deletingProject, setDeletingProject] = useState(false);
   const fileInputRef = useRef(null);
+  const documentFilenameSourceRef = useRef(null);
+  const [documentFilename, setDocumentFilename] = useState(null);
+
+  const resetDocumentFilename = useCallback(() => {
+    documentFilenameSourceRef.current = null;
+    setDocumentFilename(null);
+  }, []);
+
+  const setDocumentFilenameFromServer = useCallback(
+    (name) => {
+      if (documentFilenameSourceRef.current === "upload") {
+        return;
+      }
+      if (!name) {
+        resetDocumentFilename();
+        return;
+      }
+      documentFilenameSourceRef.current = "server";
+      setDocumentFilename(name);
+    },
+    [resetDocumentFilename]
+  );
+
+  const setDocumentFilenameFromUpload = useCallback(
+    (name) => {
+      if (!name) {
+        resetDocumentFilename();
+        return;
+      }
+      documentFilenameSourceRef.current = "upload";
+      setDocumentFilename(name);
+    },
+    [resetDocumentFilename]
+  );
 
   const statusLabel = useMemo(() => {
     if (project?.status) return project.status;
@@ -91,6 +147,13 @@ export default function Project() {
       if (!payload) return;
       const normalized = normalizeProject(payload, projectId);
       setProject(normalized);
+
+      const latestFileName = getLatestDocumentName(normalized.files);
+      if (latestFileName) {
+        setDocumentFilenameFromServer(latestFileName);
+      } else {
+        setDocumentFilenameFromServer(null);
+      }
 
       if (!options.preserveStatus) {
         setReportStatus((prevStatus) => {
@@ -135,7 +198,7 @@ export default function Project() {
         setContextSummary(contextPayload ?? null);
       }
     },
-    [projectId]
+    [projectId, setDocumentFilenameFromServer]
   );
 
   const loadProjectsList = useCallback(async () => {
@@ -238,7 +301,7 @@ export default function Project() {
 
   const handleUpload = useCallback(
     async (file) => {
-      if (!projectId) return;
+      if (!projectId) return null;
       const formData = new FormData();
       formData.append("file", file);
 
@@ -246,12 +309,17 @@ export default function Project() {
       setReportError(null);
 
       try {
-        await apiClient.post(`${API_PREFIX}/projects/${projectId}/upload`, formData, {
+        const response = await apiClient.post(`${API_PREFIX}/projects/${projectId}/upload`, formData, {
           headers: { "Content-Type": "multipart/form-data" },
         });
+        const payload = response.data ?? {};
+        if (payload.project) {
+          applyProjectData(payload.project, { preserveStatus: true });
+        }
         setReportStatus("analyzing");
         await processProject(projectId);
         await loadProjectDetails(projectId, { skipStatusUpdate: true });
+        return payload;
       } catch (err) {
         console.error("File upload failed", err);
         const message = err?.response?.data?.message ?? err?.message ?? "Не удалось загрузить документ";
@@ -260,7 +328,7 @@ export default function Project() {
         throw new Error(message);
       }
     },
-    [projectId, processProject, loadProjectDetails]
+    [projectId, processProject, loadProjectDetails, applyProjectData]
   );
 
   const handleSendMessage = useCallback(
@@ -302,7 +370,9 @@ export default function Project() {
       setDocumentActionMessage(null);
       setDocumentActionError(null);
       try {
-        await handleUpload(file);
+        const uploadResponse = await handleUpload(file);
+        const uploadedName = uploadResponse?.filename ?? file.name;
+        setDocumentFilenameFromUpload(uploadedName);
         setDocumentActionMessage("Документ загружен");
       } catch (err) {
         setDocumentActionError(err?.message ?? "Не удалось загрузить документ");
@@ -310,7 +380,7 @@ export default function Project() {
         event.target.value = "";
       }
     },
-    [handleUpload]
+    [handleUpload, setDocumentFilenameFromUpload]
   );
 
   const handleSaveProject = useCallback(async () => {
@@ -370,6 +440,10 @@ export default function Project() {
     setDocumentActionMessage(null);
     setDocumentActionError(null);
   }, [projectId]);
+
+  useEffect(() => {
+    resetDocumentFilename();
+  }, [projectId, resetDocumentFilename]);
 
   const meta = useMemo(() => {
     const chips = [];
@@ -432,9 +506,18 @@ export default function Project() {
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <h2 className="text-lg font-semibold">Документ проекта</h2>
-                <p className="text-sm text-slate-300">
-                  Управляйте загрузкой файла, сохранением отчёта и удалением проекта.
-                </p>
+                {documentFilename ? (
+                  <p
+                    className="text-sm text-slate-100 font-medium truncate max-w-xs"
+                    title={documentFilename}
+                  >
+                    {documentFilename}
+                  </p>
+                ) : (
+                  <p className="text-sm text-slate-300">
+                    Управляйте загрузкой файла, сохранением отчёта и удалением проекта.
+                  </p>
+                )}
               </div>
               {documentUpdatedAtLabel ? (
                 <span className="text-xs text-slate-300">
