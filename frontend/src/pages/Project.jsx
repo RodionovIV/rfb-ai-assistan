@@ -484,13 +484,7 @@ export default function Project() {
     setIsDocumentPanelCollapsed((prev) => !prev);
   }, [shouldEnableDocumentCollapse]);
 
-  const mainLayoutClasses = useMemo(() => {
-    const base = "flex flex-col lg:flex-row gap-8";
-    if (shouldEnableDocumentCollapse && isDocumentPanelCollapsed) {
-      return `${base} lg:items-stretch`;
-    }
-    return `${base} lg:items-start`;
-  }, [isDocumentPanelCollapsed, shouldEnableDocumentCollapse]);
+  const mainLayoutClasses = "flex flex-col lg:flex-row gap-8 lg:items-start";
 
   const documentPanelBodyClasses = useMemo(() => {
     const classes = ["flex flex-col gap-4"];
