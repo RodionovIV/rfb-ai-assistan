@@ -38,7 +38,7 @@ dsn = "postgresql+asyncpg://ai_assistant:ai_assistant@postgres:5432/ai_assistant
 echo = false
 
 [tool.ai_assistant_back.redis]
-url = "redis://localhost:6379/0"
+url = "redis://redis:6379/0"
 decode_responses = false
 
 [tool.ai_assistant_back.vector_index]
@@ -47,3 +47,5 @@ prefix = "chunk"
 dimension = 1536
 distance_metric = "cosine"
 algorithm = "HNSW"
+
+
