@@ -285,17 +285,16 @@ export default function Project() {
 
   const processProject = useCallback(
     async (id) => {
+      if (!id) return null;
+      setReportStatus("analyzing");
       try {
         const response = await apiClient.post(`${API_PREFIX}/projects/${id}/process`);
         const payload = response.data ?? {};
-        if (payload.status) {
-          setReportStatus(payload.status);
-        }
         if (payload.details) {
           setReport(payload.details);
-          setReportStatus("ready");
           setReportUpdatedAt(new Date().toISOString());
         }
+        setReportStatus("ready");
         return payload;
       } catch (err) {
         console.error("Project processing failed", err);
@@ -318,16 +317,17 @@ export default function Project() {
       setReportError(null);
 
       try {
+        setReportStatus("analyzing");
         const response = await apiClient.post(`${API_PREFIX}/projects/${projectId}/upload`, formData, {
           headers: { "Content-Type": "multipart/form-data" },
         });
         const payload = response.data ?? {};
         if (payload.project) {
           applyProjectData(payload.project, { preserveStatus: true });
+          updateChatFromPayload(payload.project);
         }
-        setReportStatus("analyzing");
-        await processProject(projectId);
-        await loadProjectDetails(projectId, { skipStatusUpdate: true });
+        setReportStatus("ready");
+        setReportUpdatedAt(new Date().toISOString());
         return payload;
       } catch (err) {
         console.error("File upload failed", err);
@@ -337,7 +337,7 @@ export default function Project() {
         throw new Error(message);
       }
     },
-    [projectId, processProject, loadProjectDetails, applyProjectData]
+    [projectId, applyProjectData, updateChatFromPayload]
   );
 
   const handleSendMessage = useCallback(

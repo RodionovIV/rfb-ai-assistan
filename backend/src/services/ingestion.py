@@ -64,6 +64,27 @@ class TextIngestionService:
             slides=slides,
         )
 
+    async def ingest_from_path(
+        self,
+        *,
+        project_id: str,
+        path: str,
+        original_name: str | None = None,
+    ) -> IngestionResult:
+        file_path = Path(path)
+        if not file_path.exists():
+            raise FileNotFoundError(path)
+
+        extension = file_path.suffix.lower()
+        slides = self._extract_slides(extension=extension, data=file_path.read_bytes())
+
+        return IngestionResult(
+            project_id=project_id,
+            stored_path=str(file_path),
+            original_filename=original_name or file_path.name,
+            slides=slides,
+        )
+
     def _extract_slides(self, extension: str, data: bytes) -> List[SlideContent]:
         if extension == ".pdf":
             return self._extract_pdf(data)

@@ -54,6 +54,7 @@ class ProjectResponse(BaseModel):
     files: List[ProjectFile] = Field(default_factory=list)
     processed: bool = False
     analysis_summary: Optional[str] = None
+    context_summary: Optional[str] = None
     history: List["ProjectMessage"] = Field(default_factory=list)
 
 
