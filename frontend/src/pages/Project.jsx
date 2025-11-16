@@ -468,10 +468,12 @@ export default function Project() {
     }
   }, [reportUpdatedAt]);
 
-  const shouldEnableDocumentCollapse = useMemo(
+  const isChatAvailable = useMemo(
     () => reportStatus === "ready" && Boolean(report),
     [reportStatus, report]
   );
+
+  const shouldEnableDocumentCollapse = isChatAvailable;
 
   useEffect(() => {
     setIsDocumentPanelCollapsed(shouldEnableDocumentCollapse);
@@ -483,8 +485,12 @@ export default function Project() {
     if (!shouldEnableDocumentCollapse) return;
     setIsDocumentPanelCollapsed((prev) => !prev);
   }, [shouldEnableDocumentCollapse]);
-
-  const mainLayoutClasses = "flex flex-col lg:flex-row gap-8 lg:items-start";
+  const mainLayoutClasses = useMemo(() => {
+    if (isChatAvailable) {
+      return "flex flex-col lg:flex-row gap-8 lg:items-start";
+    }
+    return "flex flex-col items-stretch";
+  }, [isChatAvailable]);
 
   const documentPanelBodyClasses = useMemo(() => {
     const classes = ["flex flex-col gap-4"];
@@ -503,11 +509,20 @@ export default function Project() {
 
   const documentPanelClasses = useMemo(() => {
     const classes = [
-      "bg-slate-900/60 border border-white/5 rounded-2xl shadow-xl text-slate-100 flex flex-col transition-all duration-300 ease-out p-5 lg:flex-shrink-0 lg:self-start",
+      "bg-slate-900/60 border border-white/5 rounded-2xl shadow-xl text-slate-100 flex flex-col transition-all duration-300 ease-out p-5",
     ];
 
+    if (isChatAvailable) {
+      classes.push("lg:flex-shrink-0 lg:self-start");
+    } else {
+      classes.push("w-full max-w-2xl mx-auto");
+    }
+
     if (!shouldEnableDocumentCollapse) {
-      classes.push("gap-4 lg:w-[470px]");
+      classes.push("gap-4");
+      if (isChatAvailable) {
+        classes.push("lg:w-[470px]");
+      }
       return classes.join(" ");
     }
 
@@ -518,7 +533,11 @@ export default function Project() {
     }
 
     return classes.join(" ");
-  }, [isDocumentPanelCollapsed, shouldEnableDocumentCollapse]);
+  }, [
+    isChatAvailable,
+    isDocumentPanelCollapsed,
+    shouldEnableDocumentCollapse,
+  ]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white">
@@ -536,14 +555,16 @@ export default function Project() {
         />
 
         <div className={mainLayoutClasses}>
-          <div className="flex-1 min-w-0 flex">
-            <ProjectChat
-              messages={chatMessages}
-              onSend={handleSendMessage}
-              isSending={chatLoading}
-              error={chatError}
-            />
-          </div>
+          {isChatAvailable ? (
+            <div className="flex-1 min-w-0 flex">
+              <ProjectChat
+                messages={chatMessages}
+                onSend={handleSendMessage}
+                isSending={chatLoading}
+                error={chatError}
+              />
+            </div>
+          ) : null}
 
           <section className={documentPanelClasses}>
             <DocumentPanelHeader
