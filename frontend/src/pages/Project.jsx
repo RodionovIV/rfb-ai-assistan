@@ -788,9 +788,6 @@ export default function Project() {
                     );
                   })}
                 </div>
-                <p className="text-center text-sm text-slate-400">
-                  Выбрано: {ratingValue} / 5
-                </p>
               </div>
               {ratingError ? (
                 <div className="text-sm text-red-200 bg-red-900/40 border border-red-700/40 rounded-2xl px-4 py-2">
