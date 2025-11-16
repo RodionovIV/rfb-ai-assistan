@@ -2,20 +2,17 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from typing import Iterable, Sequence
+from typing import TYPE_CHECKING, Iterable, Sequence
+
+if TYPE_CHECKING:
+    from src.agents import VectorDocument
 
 import logging
 
 from fastapi import Depends, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.agents import (
-    MarketMapperAgent,
-    PitchParserAgent,
-    ReportWriterAgent,
-    VectorDocument,
-    WebScoutAgent,
-)
+# Agents are imported lazily in _generate_report to avoid circular imports
 from src.api.projects import MarketMapperOutput, PitchParserOutput, WebScoutOutput
 from src.database import (
     ContextChunk,
@@ -310,6 +307,14 @@ class ProjectsService:
             return None, None
 
         try:
+            # Lazy import to avoid circular dependency
+            from src.agents import (
+                MarketMapperAgent,
+                PitchParserAgent,
+                ReportWriterAgent,
+                WebScoutAgent,
+            )
+
             pitch_agent = PitchParserAgent()
             pitch_result = pitch_agent.run(slides=slides)
             pitch_output = PitchParserOutput(**pitch_result)
@@ -368,6 +373,9 @@ class ProjectsService:
             return None, None
 
     async def _build_vector_documents(self, project_id: uuid.UUID) -> list[VectorDocument]:
+        # Lazy import to avoid circular dependency
+        from src.agents import VectorDocument
+
         chunks = await self._chunks.list_by_project(project_id)
         documents: list[VectorDocument] = []
         for chunk in chunks:
