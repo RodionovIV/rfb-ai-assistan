@@ -596,16 +596,15 @@ export default function Project() {
                 <div
                   className={`${
                     isDocumentPanelCollapsed ? "lg:flex" : "lg:hidden"
-                  } hidden flex-col items-center gap-3 text-center text-xs text-slate-300`}
+                  } hidden flex-col items-center gap-2 text-center text-xs text-slate-300 py-3`}
                 >
                   <span
-                    className="text-sm font-semibold tracking-[0.3em] text-slate-100"
+                    className="text-[13px] font-semibold tracking-[0.35em] text-slate-100"
                     style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
                   >
                     Документ проекта
                   </span>
-                  <span className="text-[11px] text-slate-400">Нажмите, чтобы открыть</span>
-                  <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-800/80 border border-white/10 transition-transform rotate-90" aria-hidden="true">
+                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-slate-800/80 border border-white/10 transition-transform rotate-90" aria-hidden="true">
                     ↓
                   </span>
                 </div>
