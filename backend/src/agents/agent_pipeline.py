@@ -184,13 +184,8 @@ def split_markdown_by_slides(md_text: str):
     
     return slides
 
-def main():
-    md_path = "/home/arseniy/rfb-ai-assistan/data/aurora-desk.md"
-    with open(md_path, 'r') as f:
-        md_content = f.read()
-    slides = split_markdown_by_slides(md_content)
 
-
+def run_test_pipeline():
     # query = "What is artificial intelligence in one sentence?"
     # prompt = "You are a helpful assistant. Answer concisely."
     # answer = run_langgraph_agent(query, prompt)
@@ -251,6 +246,98 @@ def main():
     report = run_report_writer_agent(project_id, pitch_data, market_data, web_data)
     
     print("\n\nПолный отчет:\n", report)
+
+
+def _extract_queries_from_pitch(
+    pitch: PitchParserOutput,
+    *,
+    fallback: str,
+) -> list[str]:
+    queries: list[str] = []
+    for section in pitch.sections:
+        if section.summary:
+            queries.append(section.summary[:300])
+        elif section.name:
+            queries.append(section.name)
+    if not queries:
+        queries = [fallback, "market analysis", "competitors"]
+    return queries[:8]
+
+async def _build_vector_documents(self, project_id: uuid.UUID) -> list[VectorDocument]:
+    chunks = await self._chunks.list_by_project(project_id)
+    documents: list[VectorDocument] = []
+    for chunk in chunks:
+        documents.append(
+            VectorDocument(
+                text=chunk.content,
+                metadata={
+                    "chunk_id": str(chunk.id),
+                    "file_id": str(chunk.file_id),
+                    "project_id": str(project_id),
+                },
+            )
+        )
+    return documents
+
+def main():
+    md_path = "/home/arseniy/rfb-ai-assistan/data/aurora-desk.md"
+    with open(md_path, 'r') as f:
+        md_content = f.read()
+    raw_slides = split_markdown_by_slides(md_content)
+    slides = []
+    idx = 0
+    for raw_slide in raw_slides:
+        slides.append(SlideContent(index=idx, text=raw_slide))
+        idx += 1
+
+    pitch_agent = PitchParserAgent(use_llm=True, api_key=api_key)
+    pitch_result = pitch_agent.run(slides=slides)
+    pitch_output = PitchParserOutput(**pitch_result)
+    print("АНАЛИЗ ПИТЧА\n", pitch_output)
+    queries = _extract_queries_from_pitch(pitch_output, fallback="project")
+
+    print("\n\nQUERIES\n", queries)
+
+    # knowledge_base = await self._build_vector_documents(project.id)
+    knowledge_base = [
+        VectorDocument(
+            text="Artificial intelligence is transforming healthcare with diagnostic tools.",
+            metadata={"source": "healthcare-report-2024"},
+        ),
+        VectorDocument(
+            text="AI market is expected to grow 25% annually over the next 5 years.",
+            metadata={"source": "market-analysis"},
+        ),
+        VectorDocument(
+            text="Machine learning algorithms are being used in autonomous vehicles.",
+            metadata={"source": "tech-news"},
+        ),
+    ]
+
+    market_agent = MarketMapperAgent(knowledge_base=knowledge_base, top_k=3)
+    market_result = market_agent.run(queries=queries)
+    market_output = MarketMapperOutput(**market_result)
+    print("\n\nMARKET\n", market_output)
+
+    web_agent = WebScoutAgent(use_real_search=True)
+    web_result = web_agent.run(queries=queries[:5])
+    web_output = WebScoutOutput(**web_result)
+    print("\n\nWEB SCOUTING\n", web_output)
+
+    report_agent = ReportWriterAgent()
+    report_result = report_agent.run(
+        project_id="project",
+        pitch=pitch_output,
+        market=market_output,
+        web=web_output,
+    )
+
+    print("\n\nREPORT\n", report_result)
+
+    # context_payload = self._compose_context_payload(market_output, web_output)
+    # context_value = context_payload or None
+
+
     return 0
 
 if __name__ == "__main__":
