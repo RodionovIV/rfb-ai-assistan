@@ -4,11 +4,11 @@ import os
 from datetime import datetime
 from typing import Iterable, List
 
-try:
-    from duckduckgo_search import DDGS
-    DDGS_AVAILABLE = True
-except ImportError:
-    DDGS_AVAILABLE = False
+# try:
+from duckduckgo_search import DDGS
+DDGS_AVAILABLE = True
+# except ImportError:
+#     DDGS_AVAILABLE = False
 
 from src.agents.base import Agent
 from src.agents.langgraph_agent import LangGraphAgent
@@ -29,7 +29,7 @@ class WebScoutAgent(Agent):
     ) -> None:
         self.provider_name = provider_name
         self.use_llm = use_llm
-        self.use_real_search = use_real_search and DDGS_AVAILABLE
+        self.use_real_search = True # use_real_search and DDGS_AVAILABLE
 
         # Инициализируем LangGraph агента для обработки результатов поиска
         # if self.use_llm:
@@ -54,7 +54,7 @@ class WebScoutAgent(Agent):
             search_results = self._perform_web_search(query)
             # if search_results:
             # Обрабатываем результаты поиска
-            for result in search_results[:3]:  # Берем топ-3 результата
+            for result in search_results[:4]:  # Берем топ-4 результата
                 finding = self._process_search_result(result, query)
                 if finding:
                     findings.append(finding)
@@ -67,8 +67,8 @@ class WebScoutAgent(Agent):
 
     def _perform_web_search(self, query: str, max_results: int = 5) -> List[dict]:
         """Выполняет реальный поиск в интернете используя DuckDuckGo."""
-        if not DDGS_AVAILABLE:
-            return []
+        # if not DDGS_AVAILABLE:
+        #     return []
         
         try:
             with DDGS() as ddgs:
@@ -102,8 +102,8 @@ class WebScoutAgent(Agent):
 
     def _create_summary_with_llm(self, query: str, content: str) -> str:
         """Создает краткое summary используя LLM."""
-        if not self.llm_agent:
-            return content[:300]
+        # if not self.llm_agent:
+        #     return content[:300]
         
         prompt = (
             SUMMARY_PROMPT.format(query=query, content=content[:1000])
