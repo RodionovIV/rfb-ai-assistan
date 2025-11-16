@@ -12,7 +12,7 @@ from redis import asyncio as redis_async
 from redis.exceptions import ResponseError
 from redisvl.index import SearchIndex
 from redisvl.schema import IndexSchema
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func, text
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
@@ -213,6 +213,12 @@ vector_index = SearchIndex(schema=VECTOR_INDEX_SCHEMA, redis_client=redis_sync_c
 async def init_models() -> None:
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        await conn.execute(
+            text(
+                "ALTER TABLE IF EXISTS files "
+                "ADD COLUMN IF NOT EXISTS original_name VARCHAR(255)"
+            )
+        )
 
 
 async def init_vector_index(overwrite: bool = False) -> None:
