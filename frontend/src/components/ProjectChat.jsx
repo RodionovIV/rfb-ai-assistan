@@ -10,7 +10,6 @@ export default function ProjectChat({
   messages = [],
   onSend,
   isSending = false,
-  contextSummary,
   error,
 }) {
   const [draft, setDraft] = useState("");
@@ -55,13 +54,6 @@ export default function ProjectChat({
           <span className="text-xs text-emerald-200 animate-pulse">Сохраняем контекст…</span>
         ) : null}
       </div>
-
-      {contextSummary ? (
-        <div className="text-xs text-slate-300 bg-slate-800/60 rounded-xl px-3 py-2 border border-white/5">
-          <span className="font-semibold text-slate-100 mr-2">Контекст:</span>
-          {contextSummary}
-        </div>
-      ) : null}
 
       <div className="flex-1 min-h-[320px] max-h-[480px] overflow-y-auto space-y-3 pr-1">
         {!normalizedMessages.length ? (

@@ -88,7 +88,6 @@ export default function Project() {
   const [chatMessages, setChatMessages] = useState([]);
   const [chatLoading, setChatLoading] = useState(false);
   const [chatError, setChatError] = useState(null);
-  const [contextSummary, setContextSummary] = useState(null);
   const [documentActionMessage, setDocumentActionMessage] = useState(null);
   const [documentActionError, setDocumentActionError] = useState(null);
   const [savingProject, setSavingProject] = useState(false);
@@ -195,16 +194,6 @@ export default function Project() {
         setReportUpdatedAt(updatedAtPayload);
       }
 
-      const contextPayload =
-        options.context ??
-        payload.context_summary ??
-        payload.context ??
-        payload.metadata?.context ??
-        undefined;
-      if (contextPayload !== undefined) {
-        setContextSummary(contextPayload ?? null);
-      }
-
       return normalized;
     },
     [projectId, setDocumentFilenameFromServer]
@@ -229,20 +218,11 @@ export default function Project() {
   const updateChatFromPayload = useCallback((payload) => {
     if (!payload) {
       setChatMessages([]);
-      setContextSummary(null);
       return;
     }
 
     const history = normalizeHistory(payload);
     setChatMessages(history.length ? history : []);
-
-    const contextPayload =
-      payload.context_summary ??
-      payload.context ??
-      payload.project?.context_summary ??
-      payload.project?.context ??
-      null;
-    setContextSummary(contextPayload ?? null);
 
     const reportPayload = extractReport(payload) ?? extractReport(payload.project);
     if (reportPayload) {
@@ -558,7 +538,6 @@ export default function Project() {
             messages={chatMessages}
             onSend={handleSendMessage}
             isSending={chatLoading}
-            contextSummary={contextSummary}
             error={chatError}
           />
 
