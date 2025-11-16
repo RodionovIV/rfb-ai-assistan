@@ -27,8 +27,14 @@ class ReportRepository(BaseRepository):
         project_id: uuid.UUID,
         title: str,
         content: str,
+        context: str | None = None,
     ) -> Report:
-        report = Report(project_id=project_id, title=title, content=content)
+        report = Report(
+            project_id=project_id,
+            title=title,
+            content=content,
+            context=context,
+        )
         self.session.add(report)
         await self.session.flush()
         return report

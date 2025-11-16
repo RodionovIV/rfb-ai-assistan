@@ -4,9 +4,19 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Iterable, Sequence
 
+import logging
+
 from fastapi import Depends, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.agents import (
+    MarketMapperAgent,
+    PitchParserAgent,
+    ReportWriterAgent,
+    VectorDocument,
+    WebScoutAgent,
+)
+from src.api.projects import MarketMapperOutput, PitchParserOutput, WebScoutOutput
 from src.database import (
     ContextChunk,
     File,
@@ -24,9 +34,11 @@ from src.repositories import (
     ReportRepository,
     VectorIndexRepository,
 )
-from src.services.ingestion import IngestionResult, TextIngestionService
+from src.services.ingestion import IngestionResult, SlideContent, TextIngestionService
 from src.services.utils import build_embedding
 from src.settings.general import config
+
+logger = logging.getLogger(__name__)
 
 
 class ProjectNotFoundError(LookupError):
@@ -57,6 +69,7 @@ class Project:
     files: list[ProjectFile] = field(default_factory=list)
     processed: bool = False
     analysis_summary: str | None = None
+    context_summary: str | None = None
     history: list[ProjectMessage] = field(default_factory=list)
 
 
@@ -98,21 +111,51 @@ class ProjectsService:
         await self._register_slides(project_id=project.id, file=file_record, ingestion=ingestion)
         await self._session.commit()
 
+        await self._generate_report(project=project, slides=ingestion.slides)
+        await self._session.commit()
+
         project_model = await self._projects.get(project.id)
         assert project_model is not None  # for type checkers
         return await self._build_project(project_model), ingestion.stored_path
 
     async def process_project(self, project_id: str) -> tuple[Project, str]:
         project = await self._get_project_or_raise(project_id)
-        chunks = await self._chunks.list_by_project(project.id)
-        summary = self._summarise_chunks(project.name, chunks)
-        await self._reports.create(
-            project_id=project.id,
-            title=f"Analysis for {project.name}",
-            content=summary,
-        )
+        files = await self._files.list_by_project(project.id)
+        if not files:
+            chunks = await self._chunks.list_by_project(project.id)
+            summary = self._summarise_chunks(project.name, chunks)
+            await self._reports.create(
+                project_id=project.id,
+                title=f"Analysis for {project.name}",
+                content=summary,
+            )
+            await self._session.commit()
+            return await self.get_project(project_id), summary
+
+        latest_file = files[0]
+        try:
+            ingestion = await self._ingestion.ingest_from_path(
+                project_id=str(project.id),
+                path=latest_file.path,
+                original_name=latest_file.original_name,
+            )
+        except FileNotFoundError:
+            message = (
+                "Загруженный документ не найден на сервере. Загрузите файл повторно для запуска анализа."
+            )
+            await self._messages.create(
+                project_id=project.id,
+                role=MessageRole.SYSTEM,
+                content=message,
+            )
+            await self._session.commit()
+            return await self.get_project(project_id), message
+
+        summary, _ = await self._generate_report(project=project, slides=ingestion.slides)
         await self._session.commit()
-        return await self.get_project(project_id), summary
+        updated_project = await self.get_project(project_id)
+        details = summary or updated_project.analysis_summary or "Анализ завершён"
+        return updated_project, details
 
     async def list_projects(self) -> list[Project]:
         projects = await self._projects.list()
@@ -167,7 +210,12 @@ class ProjectsService:
 
         embedding = build_embedding(message)
         context = await self._vector_repo.search_similar(embedding, limit=3)
-        reply_content = self._compose_response(message, context)
+        context_summary = await self._get_latest_context_summary(project.id)
+        reply_content = self._compose_response(
+            message,
+            context,
+            context_summary=context_summary,
+        )
 
         await self._messages.create(
             project_id=project.id,
@@ -176,6 +224,7 @@ class ProjectsService:
             metadata={
                 "related_chunks": [item.get("chunk_id") for item in context],
                 "source": "knowledge-base",
+                "context_summary": context_summary,
             },
         )
 
@@ -233,6 +282,7 @@ class ProjectsService:
         ]
 
         analysis_summary = reports[0].content if reports else None
+        context_summary = reports[0].context if reports else None
         return Project(
             id=str(project.id),
             name=project.name,
@@ -240,8 +290,148 @@ class ProjectsService:
             files=[ProjectFile(path=file.path, original_name=file.original_name) for file in files],
             processed=bool(reports),
             analysis_summary=analysis_summary,
+            context_summary=context_summary,
             history=history,
         )
+
+    async def _get_latest_context_summary(self, project_id: uuid.UUID) -> str | None:
+        reports = await self._reports.list_by_project(project_id)
+        if not reports:
+            return None
+        return reports[0].context
+
+    async def _generate_report(
+        self,
+        *,
+        project: ProjectModel,
+        slides: list[SlideContent],
+    ) -> tuple[str | None, str | None]:
+        if not slides:
+            return None, None
+
+        try:
+            pitch_agent = PitchParserAgent()
+            pitch_result = pitch_agent.run(slides=slides)
+            pitch_output = PitchParserOutput(**pitch_result)
+            queries = self._extract_queries_from_pitch(pitch_output, fallback=project.name)
+
+            knowledge_base = await self._build_vector_documents(project.id)
+            market_agent = MarketMapperAgent(knowledge_base=knowledge_base, top_k=3)
+            market_result = market_agent.run(queries=queries)
+            market_output = MarketMapperOutput(**market_result)
+
+            web_agent = WebScoutAgent(use_real_search=True)
+            web_result = web_agent.run(queries=queries[:5])
+            web_output = WebScoutOutput(**web_result)
+
+            report_agent = ReportWriterAgent()
+            report_result = report_agent.run(
+                project_id=str(project.id),
+                pitch=pitch_output,
+                market=market_output,
+                web=web_output,
+            )
+
+            context_payload = self._compose_context_payload(market_output, web_output)
+            context_value = context_payload or None
+            await self._reports.create(
+                project_id=project.id,
+                title=report_result.get("title", f"Отчет о проекте {project.name}"),
+                content=report_result.get("executive_summary", ""),
+                context=context_value,
+            )
+
+            message_text = self._format_report_message(report_result, context_value)
+            await self._messages.create(
+                project_id=project.id,
+                role=MessageRole.ASSISTANT,
+                content=message_text,
+                metadata={
+                    "source": "report-pipeline",
+                    "context_summary": context_value,
+                    "recommendations": report_result.get("recommendations", []),
+                },
+            )
+
+            return report_result.get("executive_summary"), context_value
+        except Exception as exc:  # pragma: no cover - defensive logging
+            logger.exception("Failed to generate report for project %s", project.id)
+            failure_message = (
+                "Не удалось автоматически сформировать отчёт. Попробуйте повторить попытку позднее."
+            )
+            await self._messages.create(
+                project_id=project.id,
+                role=MessageRole.SYSTEM,
+                content=failure_message,
+                metadata={"error": str(exc)},
+            )
+            return None, None
+
+    async def _build_vector_documents(self, project_id: uuid.UUID) -> list[VectorDocument]:
+        chunks = await self._chunks.list_by_project(project_id)
+        documents: list[VectorDocument] = []
+        for chunk in chunks:
+            documents.append(
+                VectorDocument(
+                    text=chunk.content,
+                    metadata={
+                        "chunk_id": str(chunk.id),
+                        "file_id": str(chunk.file_id),
+                        "project_id": str(project_id),
+                    },
+                )
+            )
+        return documents
+
+    @staticmethod
+    def _extract_queries_from_pitch(
+        pitch: PitchParserOutput,
+        *,
+        fallback: str,
+    ) -> list[str]:
+        queries: list[str] = []
+        for section in pitch.sections:
+            if section.summary:
+                queries.append(section.summary[:300])
+            elif section.name:
+                queries.append(section.name)
+        if not queries:
+            queries = [fallback, "market analysis", "competitors"]
+        return queries[:8]
+
+    @staticmethod
+    def _compose_context_payload(
+        market: MarketMapperOutput,
+        web: WebScoutOutput,
+    ) -> str:
+        parts: list[str] = []
+        for insight in market.insights:
+            sources = ", ".join(insight.sources) if insight.sources else "knowledge-base"
+            parts.append(
+                f"[Market] {insight.topic}: {insight.summary} (источники: {sources})"
+            )
+        for finding in web.findings:
+            parts.append(
+                f"[Web] {finding.title}: {finding.snippet} (source: {finding.url})"
+            )
+        return "\n\n".join(parts).strip()
+
+    @staticmethod
+    def _format_report_message(report_payload: dict, context_payload: str | None) -> str:
+        summary = report_payload.get("executive_summary", "")
+        recommendations = report_payload.get("recommendations", []) or []
+        rec_lines = []
+        for recommendation in recommendations:
+            title = recommendation.get("title", "Рекомендация")
+            rationale = recommendation.get("rationale", "")
+            rec_lines.append(f"- {title}: {rationale}")
+
+        message_parts = ["Анализ документа завершён."]
+        if summary:
+            message_parts.append(summary)
+        if rec_lines:
+            message_parts.append("Рекомендации:\n" + "\n".join(rec_lines))
+        return "\n\n".join(part for part in message_parts if part)
 
     @staticmethod
     def _summarise_chunks(project_name: str, chunks: Sequence[ContextChunk]) -> str:
@@ -257,18 +447,28 @@ class ProjectsService:
         )
 
     @staticmethod
-    def _compose_response(prompt: str, context: list[dict[str, object]]) -> str:
-        if not context:
-            return f"Echo: {prompt}"
-        context_lines = [
-            f"- ({match.get('score', 0.0):.2f}) {match.get('content', '')}"
-            for match in context
-        ]
-        context_block = "\n".join(context_lines)
-        return (
-            f"Echo: {prompt}\n\n"
-            f"Relevant context based on stored knowledge:\n{context_block}"
-        )
+    def _compose_response(
+        prompt: str,
+        context: list[dict[str, object]],
+        *,
+        context_summary: str | None = None,
+    ) -> str:
+        if context:
+            context_lines = [
+                f"- ({match.get('score', 0.0):.2f}) {match.get('content', '')}"
+                for match in context
+            ]
+            context_block = "\n".join(context_lines)
+            response = (
+                f"Echo: {prompt}\n\n"
+                f"Relevant context based on stored knowledge:\n{context_block}"
+            )
+        else:
+            response = f"Echo: {prompt}"
+
+        if context_summary:
+            response += f"\n\nСводка отчёта:\n{context_summary}"
+        return response
 
 
 async def get_projects_service(

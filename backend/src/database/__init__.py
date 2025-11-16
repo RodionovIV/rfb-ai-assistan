@@ -98,6 +98,7 @@ class Report(Base, TimestampMixin):
     )
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
+    context: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     project: Mapped[Project] = relationship("Project", back_populates="reports")
 
@@ -217,6 +218,12 @@ async def init_models() -> None:
             text(
                 "ALTER TABLE IF EXISTS files "
                 "ADD COLUMN IF NOT EXISTS original_name VARCHAR(255)"
+            )
+        )
+        await conn.execute(
+            text(
+                "ALTER TABLE IF EXISTS reports "
+                "ADD COLUMN IF NOT EXISTS context TEXT"
             )
         )
 

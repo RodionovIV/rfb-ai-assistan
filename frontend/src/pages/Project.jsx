@@ -88,7 +88,6 @@ export default function Project() {
   const [chatMessages, setChatMessages] = useState([]);
   const [chatLoading, setChatLoading] = useState(false);
   const [chatError, setChatError] = useState(null);
-  const [contextSummary, setContextSummary] = useState(null);
   const [documentActionMessage, setDocumentActionMessage] = useState(null);
   const [documentActionError, setDocumentActionError] = useState(null);
   const [savingProject, setSavingProject] = useState(false);
@@ -195,16 +194,6 @@ export default function Project() {
         setReportUpdatedAt(updatedAtPayload);
       }
 
-      const contextPayload =
-        options.context ??
-        payload.context_summary ??
-        payload.context ??
-        payload.metadata?.context ??
-        undefined;
-      if (contextPayload !== undefined) {
-        setContextSummary(contextPayload ?? null);
-      }
-
       return normalized;
     },
     [projectId, setDocumentFilenameFromServer]
@@ -229,20 +218,11 @@ export default function Project() {
   const updateChatFromPayload = useCallback((payload) => {
     if (!payload) {
       setChatMessages([]);
-      setContextSummary(null);
       return;
     }
 
     const history = normalizeHistory(payload);
     setChatMessages(history.length ? history : []);
-
-    const contextPayload =
-      payload.context_summary ??
-      payload.context ??
-      payload.project?.context_summary ??
-      payload.project?.context ??
-      null;
-    setContextSummary(contextPayload ?? null);
 
     const reportPayload = extractReport(payload) ?? extractReport(payload.project);
     if (reportPayload) {
@@ -285,17 +265,16 @@ export default function Project() {
 
   const processProject = useCallback(
     async (id) => {
+      if (!id) return null;
+      setReportStatus("analyzing");
       try {
         const response = await apiClient.post(`${API_PREFIX}/projects/${id}/process`);
         const payload = response.data ?? {};
-        if (payload.status) {
-          setReportStatus(payload.status);
-        }
         if (payload.details) {
           setReport(payload.details);
-          setReportStatus("ready");
           setReportUpdatedAt(new Date().toISOString());
         }
+        setReportStatus("ready");
         return payload;
       } catch (err) {
         console.error("Project processing failed", err);
@@ -318,16 +297,17 @@ export default function Project() {
       setReportError(null);
 
       try {
+        setReportStatus("analyzing");
         const response = await apiClient.post(`${API_PREFIX}/projects/${projectId}/upload`, formData, {
           headers: { "Content-Type": "multipart/form-data" },
         });
         const payload = response.data ?? {};
         if (payload.project) {
           applyProjectData(payload.project, { preserveStatus: true });
+          updateChatFromPayload(payload.project);
         }
-        setReportStatus("analyzing");
-        await processProject(projectId);
-        await loadProjectDetails(projectId, { skipStatusUpdate: true });
+        setReportStatus("ready");
+        setReportUpdatedAt(new Date().toISOString());
         return payload;
       } catch (err) {
         console.error("File upload failed", err);
@@ -337,7 +317,7 @@ export default function Project() {
         throw new Error(message);
       }
     },
-    [projectId, processProject, loadProjectDetails, applyProjectData]
+    [projectId, applyProjectData, updateChatFromPayload]
   );
 
   const handleSendMessage = useCallback(
@@ -558,7 +538,6 @@ export default function Project() {
             messages={chatMessages}
             onSend={handleSendMessage}
             isSending={chatLoading}
-            contextSummary={contextSummary}
             error={chatError}
           />
 
