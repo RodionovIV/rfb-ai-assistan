@@ -15,13 +15,23 @@ class ProjectCreateRequest(BaseModel):
     )
 
 
+class ProjectFile(BaseModel):
+    """Metadata about a stored project file."""
+
+    path: str = Field(..., description="Path of the stored file on the server")
+    original_name: Optional[str] = Field(
+        default=None,
+        description="Original filename provided by the user during upload",
+    )
+
+
 class ProjectResponse(BaseModel):
     """Representation of project metadata returned to clients."""
 
     id: str
     name: str
     description: Optional[str] = None
-    files: List[str] = Field(default_factory=list)
+    files: List[ProjectFile] = Field(default_factory=list)
     processed: bool = False
     analysis_summary: Optional[str] = None
     history: List["ProjectMessage"] = Field(default_factory=list)
@@ -39,6 +49,10 @@ class ProjectFileUploadResponse(BaseModel):
     project: ProjectResponse
     filename: str
     stored_path: str
+    original_name: Optional[str] = Field(
+        default=None,
+        description="Original filename persisted with the project",
+    )
 
 
 class ProjectProcessResponse(BaseModel):

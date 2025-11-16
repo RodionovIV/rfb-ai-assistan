@@ -24,9 +24,16 @@ class FileRepository(BaseRepository):
         self,
         project_id: uuid.UUID,
         path: str,
+        *,
+        original_name: str | None = None,
         checksum: str | None = None,
     ) -> File:
-        file = File(project_id=project_id, path=path, checksum=checksum)
+        file = File(
+            project_id=project_id,
+            path=path,
+            original_name=original_name,
+            checksum=checksum,
+        )
         self.session.add(file)
         await self.session.flush()
         return file

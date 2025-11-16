@@ -62,6 +62,7 @@ async def upload_project_file(
         project=_to_response(project),
         filename=file.filename,
         stored_path=str(stored_path),
+        original_name=file.filename,
     )
 
 
