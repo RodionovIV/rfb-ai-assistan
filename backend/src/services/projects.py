@@ -431,8 +431,6 @@ class ProjectsService:
             message_parts.append(summary)
         if rec_lines:
             message_parts.append("Рекомендации:\n" + "\n".join(rec_lines))
-        if context_payload:
-            message_parts.append("Контекст:\n" + context_payload)
         return "\n\n".join(part for part in message_parts if part)
 
     @staticmethod
