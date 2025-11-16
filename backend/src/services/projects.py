@@ -205,13 +205,29 @@ class ProjectsService:
             content=message,
         )
 
+        # Получаем весь доступный контекст
+        print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
         embedding = build_embedding(message)
-        context = await self._vector_repo.search_similar(embedding, limit=3)
+        context_chunks = await self._vector_repo.search_similar(embedding, limit=5)
         context_summary = await self._get_latest_context_summary(project.id)
-        reply_content = self._compose_response(
-            message,
-            context,
+        print("context_summary", context_summary)
+        # Получаем analysis_summary из отчета
+        reports = await self._reports.list_by_project(project.id)
+        analysis_summary = reports[0].content if reports else None
+        
+        # Получаем историю сообщений для контекста диалога (исключаем только что добавленное сообщение)
+        all_messages = await self._messages.list_by_project(project.id)
+        # Исключаем последнее сообщение (только что добавленное сообщение пользователя)
+        message_history = all_messages[:-1] if len(all_messages) > 1 else []
+        
+        # Генерируем ответ с использованием LLM агента
+        reply_content = await self._compose_response_with_agent(
+            message=message,
+            context_chunks=context_chunks,
             context_summary=context_summary,
+            analysis_summary=analysis_summary,
+            message_history=message_history,
+            project_name=project.name,
         )
 
         await self._messages.create(
@@ -219,8 +235,8 @@ class ProjectsService:
             role=MessageRole.ASSISTANT,
             content=reply_content,
             metadata={
-                "related_chunks": [item.get("chunk_id") for item in context],
-                "source": "knowledge-base",
+                "related_chunks": [item.get("chunk_id") for item in context_chunks],
+                "source": "langgraph-agent",
                 "context_summary": context_summary,
             },
         )
@@ -311,10 +327,14 @@ class ProjectsService:
             from src.agents import (
                 MarketMapperAgent,
                 PitchParserAgent,
+                PitchSummarizerAgent,
                 ReportWriterAgent,
                 WebScoutAgent,
             )
 
+            pitch_summarizer = PitchSummarizerAgent()
+            pitch_summary = pitch_summarizer.run(slides=slides)
+            print("PITCH SUMMARY", pitch_summary)
             pitch_agent = PitchParserAgent()
             pitch_result = pitch_agent.run(slides=slides)
             pitch_output = PitchParserOutput(**pitch_result)
@@ -326,7 +346,7 @@ class ProjectsService:
             market_output = MarketMapperOutput(**market_result)
 
             web_agent = WebScoutAgent(use_real_search=True)
-            web_result = web_agent.run(queries=queries[:5])
+            web_result = web_agent.run(queries=[pitch_summary])#queries[:5])
             web_output = WebScoutOutput(**web_result)
 
             report_agent = ReportWriterAgent()
@@ -454,13 +474,109 @@ class ProjectsService:
             f"'{project_name}'. These insights are now available for retrieval-augmented responses."
         )
 
+    async def _compose_response_with_agent(
+        self,
+        *,
+        message: str,
+        context_chunks: list[dict[str, object]],
+        context_summary: str | None = None,
+        analysis_summary: str | None = None,
+        message_history: list = None,
+        project_name: str = "",
+    ) -> str:
+        """Генерирует ответ используя LangGraphAgent с полным контекстом."""
+        # Lazy import to avoid circular dependency
+        from src.agents import LangGraphAgent
+        from langchain_core.messages import HumanMessage, AIMessage
+
+        try:
+            # Инициализируем агента
+            agent = LangGraphAgent(
+                model_name="gpt-4o-mini",
+                system_prompt=(
+                    "Ты - экспертный AI-ассистент для анализа проектов и презентаций. "
+                    "Твоя задача - давать точные, подробные и таргетные ответы на основе предоставленного контекста. "
+                    "Используй всю доступную информацию: анализ проекта, найденные документы, историю диалога. "
+                    "Будь конкретным и полезным в своих ответах. "
+                    "Отвечай на русском языке, если вопрос задан на русском."
+                ),
+            )
+
+            # Формируем контекст из найденных чанков
+            context_text = ""
+            if context_chunks:
+                context_lines = []
+                for i, chunk in enumerate(context_chunks, 1):
+                    score = chunk.get('score', 0.0)
+                    content = chunk.get('content', '')
+                    context_lines.append(f"Документ {i} (релевантность: {score:.2f}):\n{content}")
+                context_text = "\n\n".join(context_lines)
+
+            # Формируем полный контекст для промпта
+            full_context_parts = []
+            
+            if analysis_summary:
+                full_context_parts.append(f"АНАЛИЗ ПРОЕКТА:\n{analysis_summary}")
+            
+            if context_summary:
+                full_context_parts.append(f"КОНТЕКСТНАЯ СВОДКА:\n{context_summary}")
+            
+            if context_text:
+                full_context_parts.append(f"РЕЛЕВАНТНЫЕ ДОКУМЕНТЫ ИЗ БАЗЫ ЗНАНИЙ:\n{context_text}")
+            
+            full_context = "\n\n".join(full_context_parts) if full_context_parts else "Контекстная информация отсутствует."
+
+            # Преобразуем историю сообщений в формат для LangGraphAgent
+            message_history_formatted = []
+            if message_history:
+                for msg in message_history[-10:]:  # Берем последние 10 сообщений для контекста
+                    if msg.role == MessageRole.USER:
+                        message_history_formatted.append(HumanMessage(content=msg.content))
+                    elif msg.role == MessageRole.ASSISTANT:
+                        message_history_formatted.append(AIMessage(content=msg.content))
+
+            # Формируем финальный промпт с контекстом
+            enhanced_query = f"""Вопрос пользователя: {message}
+                Доступный контекст:
+                {full_context}
+
+                Инструкция: Дай подробный и таргетный ответ на вопрос пользователя, используя всю предоставленную информацию из контекста. 
+                - Если в контексте есть релевантная информация, используй её для формирования ответа
+                - Будь конкретным и ссылайся на конкретные данные из анализа или документов
+                - Если в контексте нет информации для ответа, честно скажи об этом
+                - Отвечай на том же языке, на котором задан вопрос"""
+
+            # Генерируем ответ
+            result = agent.run(
+                query=enhanced_query,
+                context={
+                    "project_name": project_name,
+                    "has_analysis": bool(analysis_summary),
+                    "has_context": bool(context_summary),
+                    "chunks_count": len(context_chunks),
+                },
+                message_history=message_history_formatted,
+            )
+
+            return result.get("response", "Не удалось сгенерировать ответ.")
+            
+        except Exception as e:
+            logger.exception("Failed to generate response with agent, falling back to simple response")
+            # Fallback на простой ответ
+            return self._compose_response_simple(
+                message,
+                context_chunks,
+                context_summary=context_summary,
+            )
+
     @staticmethod
-    def _compose_response(
+    def _compose_response_simple(
         prompt: str,
         context: list[dict[str, object]],
         *,
         context_summary: str | None = None,
     ) -> str:
+        """Простой метод генерации ответа без LLM (fallback)."""
         if context:
             context_lines = [
                 f"- ({match.get('score', 0.0):.2f}) {match.get('content', '')}"
