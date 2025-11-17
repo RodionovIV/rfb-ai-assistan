@@ -16,7 +16,7 @@ from src.agents.base import Agent
 from src.agents.langgraph_agent import LangGraphAgent
 from src.api.projects import WebFinding, WebScoutOutput
 
-from src.agents.prompts.prompt_web_scouter import BASE_PROMPT, SUMMARY_PROMPT
+from src.agents.prompts.prompt_web_scouter import BASE_PROMPT, BASE_PROMPT2, SUMMARY_PROMPT
 
 class WebScoutAgent(Agent):
     name = "web_scout"
@@ -90,9 +90,10 @@ class WebScoutAgent(Agent):
             response = client.responses.create(
                 model="gpt-4.1-mini",
                 tools=[{"type": "web_search_preview"}],
-                input="Найди в интернете аналоги/конкурентов с похожим продуктом: " + query
+                input=BASE_PROMPT2.format(query=query)
             )
             
+            print("SEACH ENGINE OUT:", response.output_text)
             # Извлекаем результаты из ответа
             # return self._extract_search_results(response)
             return self._parse_openai_structured_response(text=response.output_text, max_results=7)
