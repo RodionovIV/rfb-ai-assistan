@@ -33,5 +33,5 @@ if __name__ == "__main__":
         host=config.app.host,
         port=config.app.port,
         reload=True,
-        workers=1,
+        workers=4,
     )
