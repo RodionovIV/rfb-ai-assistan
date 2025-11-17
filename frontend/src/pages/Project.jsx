@@ -148,7 +148,7 @@ export default function Project() {
   }, [project?.status, reportStatus]);
 
   const hasProjectRating = typeof project?.rating === "number";
-  const canShowRatingButton = hasProjectRating || Boolean(report);
+  const canShowRatingButton = reportStatus === "ready" && Boolean(report);
 
   const applyProjectData = useCallback(
     (payload, options = {}) => {
@@ -698,10 +698,10 @@ export default function Project() {
                     onClick={!hasProjectRating ? handleOpenRatingModal : undefined}
                     onDoubleClick={hasProjectRating ? handleEditRating : undefined}
                     onKeyDown={hasProjectRating ? handleRatingPreviewKeyDown : undefined}
-                    className={`flex flex-col justify-center gap-1 rounded-xl border px-3.5 py-2 text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 w-48 min-w-[12rem] max-w-[12rem] text-left truncate ${
+                    className={`rounded-xl border px-3.5 py-2 text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 w-48 min-w-[12rem] max-w-[12rem] truncate ${
                       hasProjectRating
-                        ? "bg-slate-800/70 border-white/10 text-slate-200 hover:bg-slate-800 focus:ring-amber-300/40"
-                        : "bg-amber-400 text-slate-900 border-amber-200 hover:bg-amber-300 focus:ring-amber-200"
+                        ? "flex flex-col justify-center gap-1 text-left bg-slate-800/70 border-white/10 text-slate-200 hover:bg-slate-800 focus:ring-amber-300/40"
+                        : "inline-flex items-center justify-center text-center bg-emerald-500 text-white border-emerald-400 hover:bg-emerald-400 focus:ring-emerald-200"
                     }`}
                     title={
                       hasProjectRating
@@ -709,9 +709,6 @@ export default function Project() {
                         : "Оцените проект"
                     }
                   >
-                    <span className="text-xs uppercase tracking-widest text-slate-300">
-                      Ваша оценка
-                    </span>
                     {hasProjectRating ? (
                       <>
                         <span className="text-lg font-bold text-amber-200">
@@ -719,7 +716,7 @@ export default function Project() {
                         </span>
                         {project?.ratingComment ? (
                           <span
-                            className="text-xs font-normal text-slate-300 truncate"
+                            className="text-xs font-medium text-slate-300 truncate"
                             title={project.ratingComment}
                           >
                             {project.ratingComment}
@@ -727,7 +724,7 @@ export default function Project() {
                         ) : null}
                       </>
                     ) : (
-                      <span className="text-sm font-semibold text-slate-900">
+                      <span className="text-sm font-semibold text-inherit">
                         Поставить оценку
                       </span>
                     )}
