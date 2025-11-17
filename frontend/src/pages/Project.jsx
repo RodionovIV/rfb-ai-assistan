@@ -683,7 +683,7 @@ export default function Project() {
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={reportStatus === "uploading" || reportStatus === "analyzing"}
-                  className={`px-4 py-2.5 rounded-xl font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 ${
+                  className={`px-3.5 py-2 text-sm rounded-xl font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 ${
                     reportStatus === "uploading" || reportStatus === "analyzing"
                       ? "bg-slate-800 text-slate-400 cursor-not-allowed"
                       : "bg-indigo-500 hover:bg-indigo-400 text-white focus:ring-indigo-300"
@@ -696,7 +696,7 @@ export default function Project() {
                   onClick={!hasProjectRating ? handleOpenRatingModal : undefined}
                   onDoubleClick={hasProjectRating ? handleEditRating : undefined}
                   onKeyDown={hasProjectRating ? handleRatingPreviewKeyDown : undefined}
-                  className={`flex flex-col justify-center gap-1 rounded-xl border px-4 py-2.5 font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 w-56 min-w-[14rem] max-w-[14rem] text-left truncate ${
+                  className={`flex flex-col justify-center gap-1 rounded-xl border px-3.5 py-2 text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 w-48 min-w-[12rem] max-w-[12rem] text-left truncate ${
                     hasProjectRating
                       ? "bg-slate-800/70 border-white/10 text-slate-200 hover:bg-slate-800 focus:ring-amber-300/40"
                       : "bg-amber-400 text-slate-900 border-amber-200 hover:bg-amber-300 focus:ring-amber-200"
@@ -734,7 +734,7 @@ export default function Project() {
                   type="button"
                   onClick={handleDeleteProject}
                   disabled={deletingProject}
-                  className={`px-4 py-2.5 rounded-xl font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 ${
+                  className={`px-3.5 py-2 text-sm rounded-xl font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 ${
                     deletingProject
                       ? "bg-red-900/60 text-red-200 cursor-not-allowed"
                       : "bg-red-600 hover:bg-red-500 text-white focus:ring-red-300"
