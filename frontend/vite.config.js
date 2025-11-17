@@ -24,6 +24,7 @@ export default defineConfig(({ mode }) => {
     server: {
       host,
       port,
+      allowedHosts: ['localhost', 'idea-msk.space'],
     },
   }
 })
