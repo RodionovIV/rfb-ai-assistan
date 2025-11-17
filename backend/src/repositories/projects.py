@@ -45,6 +45,8 @@ class ProjectRepository(BaseRepository):
         *,
         name: str | None = None,
         description: str | None = None,
+        rating: int | None = None,
+        rating_comment: str | None = None,
     ) -> Project | None:
         project = await self.get(project_id)
         if project is None:
@@ -53,6 +55,10 @@ class ProjectRepository(BaseRepository):
             project.name = name
         if description is not None:
             project.description = description
+        if rating is not None:
+            project.rating = rating
+        if rating_comment is not None:
+            project.rating_comment = rating_comment
         await self.session.flush()
         return project
 

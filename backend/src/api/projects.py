@@ -55,6 +55,11 @@ class ProjectResponse(BaseModel):
     processed: bool = False
     analysis_summary: Optional[str] = None
     context_summary: Optional[str] = None
+    rating: Optional[int] = Field(default=None, description="User submitted rating from 1 to 5")
+    rating_comment: Optional[str] = Field(
+        default=None,
+        description="Optional textual feedback submitted with the rating",
+    )
     history: List["ProjectMessage"] = Field(default_factory=list)
 
 
@@ -103,6 +108,17 @@ class ProjectChatResponse(BaseModel):
     project: ProjectResponse
     reply: ProjectMessage
     history: List[ProjectMessage]
+
+
+class ProjectRateRequest(BaseModel):
+    """Schema for submitting a user rating for a project."""
+
+    rating: int = Field(..., ge=1, le=5, description="Rating value from 1 to 5")
+    comment: Optional[str] = Field(
+        default=None,
+        description="Optional feedback describing the rating",
+        max_length=2000,
+    )
 
 
 # Models for agent outputs
