@@ -24,7 +24,7 @@ class WebScoutAgent(Agent):
         provider_name: str = "duckduckgo",
         use_llm: bool = True,
         api_key: str | None = None,
-        model_name: str = "gpt-4o-mini",
+        model_name: str = "gpt-4.1-mini",
         use_real_search: bool = True,
     ) -> None:
         self.provider_name = provider_name
@@ -65,7 +65,7 @@ class WebScoutAgent(Agent):
     
         return WebScoutOutput(findings=findings).model_dump()
 
-    def _perform_web_search(self, query: str, max_results: int = 5) -> List[dict]:
+    def _perform_web_search(self, query: str, max_results: int = 10) -> List[dict]:
         """Выполняет реальный поиск в интернете используя DuckDuckGo."""
         # if not DDGS_AVAILABLE:
         #     return []

@@ -23,7 +23,7 @@ class ReportWriterAgent(Agent):
         self,
         use_llm: bool = True,
         api_key: str | None = None,
-        model_name: str = "gpt-4o-mini",
+        model_name: str = "gpt-4.1-mini",
     ) -> None:
         self.use_llm = use_llm
 

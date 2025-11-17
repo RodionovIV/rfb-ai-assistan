@@ -25,7 +25,7 @@ class LangGraphAgent(Agent):
     def __init__(
         self,
         *,
-        model_name: str = "gpt-4o-mini",
+        model_name: str = "gpt-4.1-mini",
         temperature: float = 0.7,
         api_key: str | None = None,
         system_prompt: str | None = None,

@@ -515,7 +515,7 @@ class ProjectsService:
         try:
             # Инициализируем агента
             agent = LangGraphAgent(
-                model_name="gpt-4o-mini",
+                model_name="gpt-4.1-mini",
                 system_prompt=(
                     "Ты - экспертный AI-ассистент для анализа проектов и презентаций. "
                     "Твоя задача - давать точные, подробные и таргетные ответы на основе предоставленного контекста. "

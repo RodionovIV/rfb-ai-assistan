@@ -48,7 +48,7 @@ api_key = "sk-proj-pGy3ND234VhQ3Dva2lABh14E_H3Gt0Za78cOaUqD4gSWxUasWyHLNZsX0JgLN
 def run_langgraph_agent(query, prompt):
     try:
         agent = LangGraphAgent(
-            model_name="gpt-4o-mini",
+            model_name="gpt-4.1-mini",
             api_key=api_key,
             system_prompt=prompt,
         )
