@@ -698,10 +698,10 @@ export default function Project() {
                     onClick={!hasProjectRating ? handleOpenRatingModal : undefined}
                     onDoubleClick={hasProjectRating ? handleEditRating : undefined}
                     onKeyDown={hasProjectRating ? handleRatingPreviewKeyDown : undefined}
-                    className={`inline-flex items-center justify-center rounded-xl border px-3.5 py-2 text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 w-48 min-w-[12rem] max-w-[12rem] text-center truncate ${
+                    className={`rounded-xl border px-3.5 py-2 text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 w-48 min-w-[12rem] max-w-[12rem] truncate ${
                       hasProjectRating
-                        ? "bg-slate-800/70 border-white/10 text-slate-200 hover:bg-slate-800 focus:ring-amber-300/40"
-                        : "bg-emerald-500 text-white border-emerald-400 hover:bg-emerald-400 focus:ring-emerald-200"
+                        ? "flex flex-col justify-center gap-1 text-left bg-slate-800/70 border-white/10 text-slate-200 hover:bg-slate-800 focus:ring-amber-300/40"
+                        : "inline-flex items-center justify-center text-center bg-emerald-500 text-white border-emerald-400 hover:bg-emerald-400 focus:ring-emerald-200"
                     }`}
                     title={
                       hasProjectRating
@@ -709,9 +709,25 @@ export default function Project() {
                         : "Оцените проект"
                     }
                   >
-                    <span className="text-sm font-semibold text-inherit">
-                      Поставить оценку
-                    </span>
+                    {hasProjectRating ? (
+                      <>
+                        <span className="text-lg font-bold text-amber-200">
+                          {project?.rating} / 5
+                        </span>
+                        {project?.ratingComment ? (
+                          <span
+                            className="text-xs font-medium text-slate-300 truncate"
+                            title={project.ratingComment}
+                          >
+                            {project.ratingComment}
+                          </span>
+                        ) : null}
+                      </>
+                    ) : (
+                      <span className="text-sm font-semibold text-inherit">
+                        Поставить оценку
+                      </span>
+                    )}
                   </button>
                 ) : null}
                 <button
