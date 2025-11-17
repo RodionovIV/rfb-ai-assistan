@@ -678,7 +678,7 @@ export default function Project() {
                 onChange={handleDocumentUploadChange}
               />
 
-              <div className="flex flex-wrap gap-3">
+              <div className="flex flex-nowrap items-stretch gap-3 overflow-x-auto">
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
@@ -691,41 +691,45 @@ export default function Project() {
                 >
                   {reportStatus === "uploading" ? "Загружаем..." : "Загрузить"}
                 </button>
-                {!hasProjectRating ? (
-                  <button
-                    type="button"
-                    onClick={handleOpenRatingModal}
-                    className="px-4 py-2.5 rounded-xl font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 bg-amber-400 text-slate-900 hover:bg-amber-300 focus:ring-amber-200"
-                  >
-                    Оценить проект
-                  </button>
-                ) : (
-                  <div
-                    className="flex flex-col gap-1 px-4 py-2 rounded-2xl bg-slate-800/70 border border-white/10 text-slate-200 cursor-pointer focus-within:ring-2 focus-within:ring-amber-300/40"
-                    role="button"
-                    tabIndex={0}
-                    onDoubleClick={handleEditRating}
-                    onKeyDown={handleRatingPreviewKeyDown}
-                    title="Дважды нажмите, чтобы изменить отзыв"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="text-2xl text-amber-300" aria-hidden="true">
-                        ★
-                      </div>
-                      <div className="text-sm leading-tight">
-                        <p className="font-semibold text-slate-100">
-                          Ваша оценка: {project?.rating} / 5
-                        </p>
-                        {project?.ratingComment ? (
-                          <p className="text-slate-300 max-w-xs" title={project.ratingComment}>
-                            {project.ratingComment}
-                          </p>
-                        ) : null}
-                      </div>
-                    </div>
-                    <p className="text-xs text-slate-500">Дважды нажмите, чтобы изменить отзыв</p>
-                  </div>
-                )}
+                <button
+                  type="button"
+                  onClick={!hasProjectRating ? handleOpenRatingModal : undefined}
+                  onDoubleClick={hasProjectRating ? handleEditRating : undefined}
+                  onKeyDown={hasProjectRating ? handleRatingPreviewKeyDown : undefined}
+                  className={`flex flex-col justify-center gap-1 rounded-xl border px-4 py-2.5 font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 w-56 min-w-[14rem] max-w-[14rem] text-left truncate ${
+                    hasProjectRating
+                      ? "bg-slate-800/70 border-white/10 text-slate-200 hover:bg-slate-800 focus:ring-amber-300/40"
+                      : "bg-amber-400 text-slate-900 border-amber-200 hover:bg-amber-300 focus:ring-amber-200"
+                  }`}
+                  title={
+                    hasProjectRating
+                      ? "Дважды нажмите, чтобы изменить отзыв"
+                      : "Оцените проект"
+                  }
+                >
+                  <span className="text-xs uppercase tracking-widest text-slate-300">
+                    Ваша оценка
+                  </span>
+                  {hasProjectRating ? (
+                    <>
+                      <span className="text-lg font-bold text-amber-200">
+                        {project?.rating} / 5
+                      </span>
+                      {project?.ratingComment ? (
+                        <span
+                          className="text-xs font-normal text-slate-300 truncate"
+                          title={project.ratingComment}
+                        >
+                          {project.ratingComment}
+                        </span>
+                      ) : null}
+                    </>
+                  ) : (
+                    <span className="text-sm font-semibold text-slate-900">
+                      Поставить оценку
+                    </span>
+                  )}
+                </button>
                 <button
                   type="button"
                   onClick={handleDeleteProject}
